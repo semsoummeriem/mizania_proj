@@ -11,7 +11,7 @@ class AppStyles {
   );
   static const TextStyle smalltextstyle = TextStyle(
     fontSize: 24,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w100,
     color: AppColors.smalltextColor,
     fontFamily: AppFonts.plusJakartaSans,
   );
