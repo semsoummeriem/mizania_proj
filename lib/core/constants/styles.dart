@@ -14,6 +14,7 @@ class AppStyles {
     fontWeight: FontWeight.w100,
     color: AppColors.smalltextColor,
     fontFamily: AppFonts.plusJakartaSans,
+    letterSpacing: 0.5,
   );
   static const TextStyle labelStyle = TextStyle(
     fontSize: 24,

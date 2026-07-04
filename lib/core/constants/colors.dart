@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'fonts.dart';
-
 class AppColors {
   static const Color backgroundlightColor = Color(0xFFF5F5F7);
   static const Color smalltextColor = Color(0xFF8B8898);
