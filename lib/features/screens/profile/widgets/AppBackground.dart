@@ -9,31 +9,33 @@ class AppBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned(
-          top: -40,
-          left: -60,
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.15)),
-        ),
-        Positioned(
-          top: 100,
-          right: -50,
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Dot(size: 100, color: AppColors.dotColor, opacity: 0.15)),
-        ),
-        Positioned(
-          bottom: -40,
-          left: -60,
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.15)),
-        ),
-        child,
-      ],
+    return SingleChildScrollView(
+      child: Stack(
+        children: [
+          Positioned(
+            top: -40,
+            left: -60,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.15)),
+          ),
+          Positioned(
+            top: 100,
+            right: -50,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Dot(size: 100, color: AppColors.dotColor, opacity: 0.15)),
+          ),
+          Positioned(
+            bottom: -40,
+            left: -60,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.15)),
+          ),
+          child,
+        ],
+      ),
     );
   }
 }

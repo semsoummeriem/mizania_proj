@@ -3,6 +3,7 @@ import '../../../core/constants/colors.dart';
 import '../../../core/constants/styles.dart';
 import '../profile/widgets/AppBackground.dart';
 import '../../../core/widgets/input_fields.dart';
+import '../../../core/widgets/button.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -42,6 +43,25 @@ class _LoginState extends State<Login> {
               SizedBox(height: 24),
               InputField(label: 'Mot de passe', hint: 'Entrez votre mot de passe'),
               SizedBox(height: 24),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    // Hroutes to forgot password page
+                  },
+                  child: Text(
+                    'Mot de passe oublié?',
+                    style: AppStyles.LinkbuttonTextStyle,
+                  ),
+                ),
+              ),
+              SizedBox(height: 24),
+              Button(
+                text: 'Se connecter',
+                onPressed: () {
+                  // routes to home page
+                },
+              ),
             ],
           ),
         )

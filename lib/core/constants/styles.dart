@@ -98,4 +98,11 @@ class AppStyles {
     color: AppColors.smalltextColor,
     fontFamily: AppFonts.plusJakartaSans,
   );
+
+  static const TextStyle LinkbuttonTextStyle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: AppColors.dotColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
 }
