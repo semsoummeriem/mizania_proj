@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/styles.dart';
+import '../profile/widgets/AppBackground.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -14,7 +15,8 @@ class _LoginState extends State<Login> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundlightColor,
-      body: Center(
+      body: AppBackground(child:
+         Center(
         child:Column(
           //mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -43,6 +45,7 @@ class _LoginState extends State<Login> {
           ],
         ),
         )
+      ),
     );
   }
 }

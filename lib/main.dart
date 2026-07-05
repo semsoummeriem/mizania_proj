@@ -3,5 +3,5 @@ import 'features/screens/auth/splash_screen.dart';
 import 'features/screens/auth/login.dart';
 
 void main() {
-  runApp(MaterialApp(home: const SplashScreen()));
+  runApp(MaterialApp(home: const Login()));
 }
