@@ -2,5 +2,8 @@ import 'package:flutter/material.dart';
 import 'features/screens/auth/splash_screen.dart';
 
 void main() {
-  runApp(MaterialApp(home: const SplashScreen()));
+  runApp(MaterialApp(
+    home: const SplashScreen(),
+    debugShowCheckedModeBanner: false,
+  ));
 }
