@@ -9,7 +9,10 @@ class AppBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: MediaQuery.of(context).size.height,
+      ),
       child: Stack(
         children: [
           Positioned(
@@ -17,21 +20,21 @@ class AppBackground extends StatelessWidget {
             left: -60,
             child: ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.15)),
+              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.2)),
           ),
           Positioned(
             top: 100,
             right: -50,
             child: ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Dot(size: 100, color: AppColors.dotColor, opacity: 0.15)),
+              child: Dot(size: 100, color: AppColors.dotColor, opacity: 0.2)),
           ),
           Positioned(
             bottom: -40,
             left: -60,
             child: ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.15)),
+              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.2)),
           ),
           child,
         ],
