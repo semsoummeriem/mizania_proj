@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'features/screens/auth/splash_screen.dart';
+import 'features/screens/profile/profile_screen.dart';
 
 void main() {
-  runApp(MaterialApp(
-    home: const SplashScreen(),
-    debugShowCheckedModeBanner: false,
-  ));
+  runApp(
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: const ProfileScreen(),
+    ),
+  );
 }

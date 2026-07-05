@@ -98,4 +98,37 @@ class AppStyles {
     color: AppColors.smalltextColor,
     fontFamily: AppFonts.plusJakartaSans,
   );
+
+  // --- Ajouts pour email / mot de passe / revenu ---
+  static const TextStyle infoBoxTextStyle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    color: AppColors.amberColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle strengthLabelStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: AppColors.greenColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle errorTextStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    color: AppColors.roseColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle budgetImpactTitleStyle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: AppColors.darkmauveColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle budgetImpactRowStyle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: AppColors.darkmauveColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
 }
+
