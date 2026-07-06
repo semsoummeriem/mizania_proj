@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
-import 'features/screens/profile/profile_screen.dart';
+import 'core/state/app_state.dart';
+import 'core/state/app_state_scope.dart';
+import 'features/screens/main_navigation_screen.dart';
 
 void main() {
+  // On crée UNE SEULE instance de AppState, partagée par toute l'application.
+  final appState = AppState();
+
   runApp(
-    MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: const ProfileScreen(),
+    AppStateScope(
+      appState: appState,
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: const MainNavigationScreen(),
+      ),
     ),
   );
 }

@@ -14,7 +14,6 @@ class AppStyles {
     fontWeight: FontWeight.w100,
     color: AppColors.smalltextColor,
     fontFamily: AppFonts.plusJakartaSans,
-    letterSpacing: 0.5,
   );
   static const TextStyle labelStyle = TextStyle(
     fontSize: 24,
@@ -130,5 +129,99 @@ class AppStyles {
     color: AppColors.darkmauveColor,
     fontFamily: AppFonts.plusJakartaSans,
   );
-}
 
+  // --- Ajouts pour la page Home ---
+  static const TextStyle greetingStyle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.smalltextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle greetingNameStyle = TextStyle(
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
+    color: AppColors.bigtextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle totalLabelStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.6,
+    color: AppColors.smalltextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle totalAmountStyle = TextStyle(
+    fontSize: 36,
+    fontWeight: FontWeight.w700,
+    color: AppColors.bigtextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle cardSectionTitleStyle = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: AppColors.bigtextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle linkStyle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: AppColors.darkmauveColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle incomeAmountStyle = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: AppColors.darkmauveColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle remainingStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: AppColors.amberColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle percentUsedStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    color: AppColors.smalltextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle legendLabelStyle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    color: AppColors.bigtextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle legendAmountStyle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: AppColors.bigtextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle expenseAmountStyle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: AppColors.bigtextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+
+  // --- Ajouts pour la page Notifications ---
+  static const TextStyle notifTitleStyle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: AppColors.bigtextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle notifMessageStyle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: AppColors.smalltextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+  static const TextStyle notifTimeStyle = TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    color: AppColors.smalltextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+}
