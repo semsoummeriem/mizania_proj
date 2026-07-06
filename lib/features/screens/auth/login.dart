@@ -5,7 +5,6 @@ import '../profile/widgets/AppBackground.dart';
 import '../../../core/widgets/input_fields.dart';
 import '../../../core/widgets/button.dart';
 import 'package:mizania_proj/features/screens/auth/sign_in.dart';
-import 'package:mizania_proj/features/screens/auth/onboarding.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -30,9 +29,15 @@ class _LoginState extends State<Login> {
                 //mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Center(
-                    child: Image.asset('assets/4th.png', width: 150, height: 150),
+                    child: Image.asset(
+                      'assets/4th.png',
+                      width: 150,
+                      height: 150,
+                    ),
                   ),
-                  Center(child: Text('Connexion', style: AppStyles.bigtextstyle)),
+                  Center(
+                    child: Text('Connexion', style: AppStyles.bigtextstyle),
+                  ),
                   Center(
                     child: Text(
                       'Contents de vous revoir!',
@@ -88,9 +93,7 @@ class _LoginState extends State<Login> {
                           // routes to sign up page
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => SignIn(),
-                            ),
+                            MaterialPageRoute(builder: (context) => SignIn()),
                           );
                         },
                         child: Text(
