@@ -3,6 +3,8 @@ import '../../../core/constants/colors.dart';
 import '../../../core/constants/styles.dart';
 import '../../../core/widgets/dot.dart';
 import 'dart:ui';
+import 'dart:async';
+import 'package:mizania_proj/features/screens/auth/onboarding.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,21 +25,24 @@ class _SplashScreenState extends State<SplashScreen> {
             left: -60,
             child: ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.15)),
+              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.2),
+            ),
           ),
           Positioned(
             top: 100,
             right: -50,
             child: ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Dot(size: 100, color: AppColors.dotColor, opacity: 0.15)),
+              child: Dot(size: 100, color: AppColors.dotColor, opacity: 0.2),
+            ),
           ),
           Positioned(
             bottom: -40,
             left: -60,
             child: ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.15)),
+              child: Dot(size: 150, color: AppColors.dotColor, opacity: 0.2),
+            ),
           ),
           Center(
             child: Column(
@@ -57,9 +62,10 @@ class _SplashScreenState extends State<SplashScreen> {
                     width: 200,
                     height: 10,
                     child: LinearProgressIndicator(
-                      
-                     // strokeWidth: 6,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.dotColor),
+                      // strokeWidth: 6,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.dotColor,
+                      ),
                     ),
                   ),
                 ),

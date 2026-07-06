@@ -39,8 +39,9 @@ dependencies:
   shared_preferences: ^2.5.5
   go_router: ^17.3.0
   fl_chart: ^1.2.0
-  pdf: ^3.13.0
+pdf: ^3.13.0
   printing: ^5.15.0
+  flutter_riverpod: ^3.3.2
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +69,12 @@ flutter:
   assets:
     - assets/logo.png
     - assets/name.png
+    - assets/4th.png
+    - assets/5th.png
+    - assets/6th.png
+    - assets/1st.png
+    - assets/2nd.png
+    - assets/3rd.png
     - assets/profil_icon.png
     - assets/home_icon.png
     - assets/historique_icon.png

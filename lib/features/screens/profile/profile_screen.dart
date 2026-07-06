@@ -303,8 +303,8 @@ class ProfileScreen extends StatelessWidget {
             title: 'Apparence',
             subtitle: appState.isDarkMode ? 'Mode sombre' : 'Mode clair',
             trailing: Switch(
-              value: appState.isDarkMode,
-              activeColor: AppColors.darkmauveColor,
+value: appState.isDarkMode,
+              activeThumbColor: AppColors.darkmauveColor,
               onChanged: (value) => appState.setDarkMode(value),
             ),
           ),
@@ -315,8 +315,8 @@ class ProfileScreen extends StatelessWidget {
             title: 'Notifications',
             subtitle: 'Alertes budget activées',
             trailing: Switch(
-              value: appState.notificationsOn,
-              activeColor: AppColors.darkmauveColor,
+value: appState.notificationsOn,
+              activeThumbColor: AppColors.darkmauveColor,
               onChanged: (value) => appState.setNotificationsOn(value),
             ),
           ),

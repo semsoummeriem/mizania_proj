@@ -16,7 +16,7 @@ class AppStyles {
     fontFamily: AppFonts.plusJakartaSans,
   );
   static const TextStyle labelStyle = TextStyle(
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: FontWeight.w700,
     color: AppColors.smalltextColor,
     fontFamily: AppFonts.plusJakartaSans,
@@ -222,6 +222,14 @@ class AppStyles {
     fontSize: 11,
     fontWeight: FontWeight.w400,
     color: AppColors.smalltextColor,
+    fontFamily: AppFonts.plusJakartaSans,
+  );
+
+  // --- Ajout de ta copine ---
+  static const TextStyle LinkbuttonTextStyle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: AppColors.dotColor,
     fontFamily: AppFonts.plusJakartaSans,
   );
 }
