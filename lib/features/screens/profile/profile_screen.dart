@@ -253,7 +253,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: isDarkMode ? 'Mode sombre' : 'Mode clair',
             trailing: Switch(
               value: isDarkMode,
-              activeColor: AppColors.darkmauveColor,
+              activeThumbColor: AppColors.darkmauveColor,
               onChanged: (value) => setState(() => isDarkMode = value),
             ),
           ),
@@ -265,7 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: 'Alertes budget activées',
             trailing: Switch(
               value: notificationsOn,
-              activeColor: AppColors.darkmauveColor,
+              activeThumbColor: AppColors.darkmauveColor,
               onChanged: (value) => setState(() => notificationsOn = value),
             ),
           ),
