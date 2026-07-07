@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'fonts.dart';
+
 class AppColors {
   static const Color backgroundlightColor = Color(0xFFF5F5F7);
   static const Color smalltextColor = Color(0xFF8B8898);
@@ -22,4 +24,9 @@ class AppColors {
   static const Color blueLightColor = Color(0xFFE3F0FB);
   static const Color greenLightColor = Color(0xFFE6F5E9);
   static const Color orangeLightColor = Color(0xFFFDF1E3);
+
+  // --- Ajouts pour Home / Notifications ---
+  static const Color tealColor = Color(0xFF2FAE8B);
+  static const Color redColor = Color(0xFFE05656);
+  static const Color redLightColor = Color(0xFFFBE4E4);
 }
