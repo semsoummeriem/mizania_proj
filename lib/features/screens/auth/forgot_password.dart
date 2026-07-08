@@ -14,7 +14,6 @@ class ForgotPassword extends StatefulWidget {
 }
 
 class _ForgotPasswordState extends State<ForgotPassword> {
-
   final TextEditingController emailController = TextEditingController();
 
   @override
@@ -22,6 +21,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
     emailController.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,6 +62,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                   text: 'Envoyer le lien',
                   onPressed: () {
                     // routes to home page
+                    final email = emailController.text.trim();
                     Navigator.push(
                       context,
                       MaterialPageRoute(

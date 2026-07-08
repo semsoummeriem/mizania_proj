@@ -94,6 +94,7 @@ class _LoginState extends State<Login> {
                     onPressed: () {
                       // routes to home page
                       final email = emailController.text.trim();
+                      final password = passwordController.text;
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(

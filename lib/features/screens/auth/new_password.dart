@@ -69,6 +69,7 @@ class _NewPasswordState extends State<NewPassword> {
                   text: 'Modifier le mot de passe',
                   onPressed: () {
                     // routes to home page
+                    final password = passwordController.text;
                   },
                 ),
                 SizedBox(height: 24),

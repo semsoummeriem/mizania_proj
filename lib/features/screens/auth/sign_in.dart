@@ -83,6 +83,9 @@ class _SignInState extends State<SignIn> {
                     text: 'S\'inscrire',
                     onPressed: () {
                       // routes to home page
+                      final name = nameController.text;
+                      final email = emailController.text.trim();
+                      final password = passwordController.text;
                     },
                   ),
                   SizedBox(height: 24),

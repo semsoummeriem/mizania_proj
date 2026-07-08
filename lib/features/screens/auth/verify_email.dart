@@ -61,6 +61,7 @@ class _VerifyEmailState extends State<VerifyEmail> {
                   text: 'Ouvrir l\'appli',
                   onPressed: () {
                     // routes to home page
+                    final email = emailController.text.trim();
                   },
                 ),
                 SizedBox(height: 24),
