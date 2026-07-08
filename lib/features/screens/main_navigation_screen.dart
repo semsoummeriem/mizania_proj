@@ -4,6 +4,7 @@ import 'home/home_screen.dart';
 import 'historique/historique_screen.dart';
 import 'budgets/budgets_screen.dart';
 import 'profile/profile_screen.dart';
+import '../gestion/screens/gestion.dart';
 
 /// Page "coquille" : contient la barre de navigation en bas et bascule entre
 /// les 4 onglets (Home, Historique, Budgets, Profil).
@@ -43,11 +44,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _currentIndex,
         onTap: _goToTab,
-        onAddTap: () {
-          // TODO: ouvrir la page "Ajouter une dépense" une fois créée
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Page "Ajouter une dépense" à venir')),
+        onAddTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const Gestion()),
           );
+          if (result != null && result is int) {
+            setState(() => _currentIndex = result);
+          }
         },
       ),
     );

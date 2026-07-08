@@ -13,7 +13,32 @@ class AddCategory extends StatefulWidget {
 }
 
 class _AddCategoryState extends State<AddCategory> {
-  IconData chosenIcon = Icons.hourglass_empty;
+  final List<Color> colorOptions = [
+    Colors.indigo,
+    Colors.deepPurpleAccent,
+    Colors.lightBlue,
+    Colors.pinkAccent,
+    Colors.orange,
+  ];
+
+  Color chosenColor = Colors.indigo;
+
+  final List<IconData> iconOptions = [
+    Icons.home,
+    Icons.card_giftcard,
+    Icons.fastfood,
+    Icons.calendar_today,
+    Icons.directions_car,
+  ];
+
+  IconData chosenIcon = Icons.home;
+  final TextEditingController nameController = TextEditingController();
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    super.dispose();
+  }
 
   // @override
   // void initState() {
@@ -62,27 +87,189 @@ class _AddCategoryState extends State<AddCategory> {
                         vertical: 20,
                       ),
                       child: Container(
+                        width: 100,
+                        height: 100,
                         alignment: Alignment.center,
                         //padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.dotColor.withValues(alpha: 0.5),
+                          color: AppColors.dotColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.dotColor,
+                            width: 2,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               blurRadius: 5,
                               color: AppColors.backgrounddarkColor.withValues(
-                                alpha: 1,
+                                alpha: 0.2,
                               ),
                               offset: Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: Icon(chosenIcon),
+                        child: Icon(chosenIcon, size: 40, color: chosenColor),
                       ),
                     ),
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 24),
+                    Text(
+                      'NOM',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        hintText: 'Nourriture',
+                        hintStyle: TextStyle(
+                          fontSize: 10,
+                          fontFamily: 'PlusJakartaSans',
+                          color: AppColors.smalltextColor,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: AppColors.dotColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppColors.dotColor,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    Text(
+                      'ICONE',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 4,
+                      children: iconOptions.map((icon) {
+                        bool isSelected = chosenIcon == icon;
+                        return GestureDetector(
+                          onTap: () => setState(() => chosenIcon = icon),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.dotColor
+                                    : Colors.grey.shade300,
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                icon,
+                                color: AppColors.dotColor,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    SizedBox(height: 24),
+                    SizedBox(height: 24),
+                    Text(
+                      'COULEUR',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: colorOptions.map((color) {
+                        bool isSelected = chosenColor == color;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: GestureDetector(
+                            onTap: () => setState(() => chosenColor = color),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: isSelected
+                                    ? Border.all(color: Colors.black, width: 2)
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    if (nameController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Merci d\'entrer un nom')),
+                      );
+                      return;
+                    }
+                    Navigator.pop(
+                      context,
+                      Category(
+                        icon: chosenIcon,
+                        name: nameController.text.trim(),
+                      ),
+                    );
+                  },
+                  icon: Icon(Icons.check, color: Colors.white),
+                  label: Text(
+                    'Enregistrer la categorie',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.dotColor,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              SizedBox(height: 24),
             ],
           ),
         ),

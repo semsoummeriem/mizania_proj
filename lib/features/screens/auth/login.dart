@@ -5,16 +5,27 @@ import '../profile/widgets/AppBackground.dart';
 import '../../../core/widgets/input_fields.dart';
 import '../../../core/widgets/button.dart';
 import 'package:mizania_proj/features/screens/auth/sign_in.dart';
+import 'package:mizania_proj/features/screens/main_navigation_screen.dart';
+import 'forgot_password.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
-
 
   @override
   State<Login> createState() => _LoginState();
 }
 
 class _LoginState extends State<Login> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,11 +60,14 @@ class _LoginState extends State<Login> {
                   InputField(
                     label: 'Adresse e-mail',
                     hint: 'Entrez votre adresse e-mail',
+                    controller: emailController,
                   ),
                   SizedBox(height: 24),
                   InputField(
                     label: 'Mot de passe',
                     hint: 'Entrez votre mot de passe',
+                    isPassword: true,
+                    controller: passwordController,
                   ),
                   SizedBox(height: 24),
                   Align(
@@ -61,6 +75,12 @@ class _LoginState extends State<Login> {
                     child: TextButton(
                       onPressed: () {
                         // Hroutes to forgot password page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ForgotPassword(),
+                          ),
+                        );
                       },
                       child: Text(
                         'Mot de passe oublié?',
@@ -73,6 +93,13 @@ class _LoginState extends State<Login> {
                     text: 'Se connecter',
                     onPressed: () {
                       // routes to home page
+                      final email = emailController.text.trim();
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MainNavigationScreen(),
+                        ),
+                      );
                     },
                   ),
                   SizedBox(height: 24),
@@ -92,7 +119,7 @@ class _LoginState extends State<Login> {
                         onPressed: () {
                           //Onboarding()._timer.cancel(); // Cancel the timer when navigating to the sign-up page
                           // routes to sign up page
-                          Navigator.pushReplacement(
+                          Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => SignIn()),
                           );

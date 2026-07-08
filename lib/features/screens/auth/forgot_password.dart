@@ -4,10 +4,24 @@ import '../../../core/constants/styles.dart';
 import '../profile/widgets/AppBackground.dart';
 import '../../../core/widgets/input_fields.dart';
 import '../../../core/widgets/button.dart';
+import 'verify_email.dart';
 
-class ForgotPassword extends StatelessWidget {
+class ForgotPassword extends StatefulWidget {
   const ForgotPassword({super.key});
 
+  @override
+  State<ForgotPassword> createState() => _ForgotPasswordState();
+}
+
+class _ForgotPasswordState extends State<ForgotPassword> {
+
+  final TextEditingController emailController = TextEditingController();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,12 +55,19 @@ class ForgotPassword extends StatelessWidget {
                 InputField(
                   label: 'Adresse e-mail',
                   hint: 'Entrez votre adresse e-mail',
+                  controller: emailController,
                 ),
                 SizedBox(height: 24),
                 Button(
                   text: 'Envoyer le lien',
                   onPressed: () {
                     // routes to home page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const VerifyEmail(),
+                      ),
+                    );
                   },
                 ),
               ],

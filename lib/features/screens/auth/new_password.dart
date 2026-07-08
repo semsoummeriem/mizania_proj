@@ -5,8 +5,24 @@ import '../profile/widgets/AppBackground.dart';
 import '../../../core/widgets/input_fields.dart';
 import '../../../core/widgets/button.dart';
 
-class NewPassword extends StatelessWidget {
+class NewPassword extends StatefulWidget {
   const NewPassword({super.key});
+
+  @override
+  State<NewPassword> createState() => _NewPasswordState();
+}
+
+class _NewPasswordState extends State<NewPassword> {
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+
+  @override
+  void dispose() {
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +36,13 @@ class NewPassword extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               //mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Center(child: Text('Nouveau mot de passe', style: AppStyles.bigtextstyle, textAlign: TextAlign.center)),
+                Center(
+                  child: Text(
+                    'Nouveau mot de passe',
+                    style: AppStyles.bigtextstyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
                 Center(
                   child: Text(
                     'Créer un nouveau mot de passe sécurisé.',
@@ -29,11 +51,18 @@ class NewPassword extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 24),
-                InputField(label: 'Nouveau mot de passe', hint: 'Entrez votre nouveau mot de passe'),
+                InputField(
+                  label: 'Nouveau mot de passe',
+                  hint: 'Entrez votre nouveau mot de passe',
+                  isPassword: true,
+                  controller: passwordController,
+                ),
                 SizedBox(height: 24),
                 InputField(
                   label: 'Confirmer',
                   hint: 'Confirmez votre nouveau mot de passe',
+                  isPassword: true,
+                  controller: confirmPasswordController,
                 ),
                 SizedBox(height: 24),
                 Button(
