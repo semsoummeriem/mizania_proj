@@ -6,6 +6,10 @@ import 'package:mizania_proj/core/widgets/input_fields.dart';
 import 'package:mizania_proj/models/category.dart';
 import 'add_category.dart';
 import 'package:mizania_proj/core/widgets/custom_bottom_nav_bar.dart';
+import 'package:mizania_proj/core/services/supabase_client.dart';
+import 'package:mizania_proj/core/services/expense_service.dart';
+import 'package:mizania_proj/core/constants/icon_map.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class Gestion extends StatefulWidget {
   final double? initialAmount;
@@ -42,19 +46,20 @@ class _GestionState extends State<Gestion> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  List<Category> categories = [
-    Category(icon: Icons.fastfood, name: 'Nourriture'),
-    Category(icon: Icons.directions_car, name: 'Transport'),
-    Category(icon: Icons.local_pharmacy, name: 'Santé'),
-    Category(icon: Icons.sports_esports, name: 'Loisirs'),
-    Category(icon: Icons.category, name: 'Autres'),
-  ];
+  List<Category> categories = [];
+
+  bool _loadingCategories = true;
+
+  final _ExpenseService = ExpenseService();
 
   double amount = 0.00;
   String? SelectedCategory;
   DateTime SelectedDate = DateTime.now();
+  int? SelectedCategoryID;
   final TextEditingController amountController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
   bool _showConfirmation = false;
+  bool _finishInsertingExpense = false;
 
   @override
   void initState() {
@@ -71,9 +76,30 @@ class _GestionState extends State<Gestion> {
     }
   }
 
+  Future<void> loadCategories() async {
+    final userID = supabase.auth.currentUser!.id;
+    final data = await supabase
+        .from('categories')
+        .select()
+        .or('user_id.is.null, user_id.eq.$userID');
+    setState(() {
+      categories = (data as List).map((row) {
+        return Category(
+          id: row['id'],
+          icon: iconname(row['icon']),
+          name: row['name'],
+          color: row['color'],
+          isDefault: row['is_default'] ?? false,
+        );
+      }).toList();
+      _loadingCategories = false;
+    });
+  }
+
   @override
   void dispose() {
     amountController.dispose();
+    descriptionController.dispose();
     super.dispose();
   }
 
@@ -196,114 +222,132 @@ class _GestionState extends State<Gestion> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: 24),
-                    InputField(label: 'Description', hint: 'ex: Café...'),
+                    InputField(
+                      label: 'Description',
+                      hint: 'ex: Café...',
+                      controller: descriptionController,
+                    ),
                     SizedBox(height: 24),
                     Text('Catégorie', style: AppStyles.labelStyle),
                     SizedBox(height: 8),
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 4,
-                      children: [
-                        ...categories.map((category) {
-                          bool isSelected = SelectedCategory == category.name;
-                          return GestureDetector(
-                            onTap: () => setState(
-                              () => SelectedCategory = category.name,
+                    _loadingCategories
+                        ? Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(18),
+                              child: SpinKitFadingCircle(
+                                color: AppColors.dotColor,
+                                size: 50.0,
+                              ),
                             ),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppColors.dotColor.withValues(alpha: 0.3)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? AppColors.backgrounddarkColor
-                                      : Colors.white,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    category.icon,
-                                    size: 16,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : AppColors.dotColor,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    category.name,
-                                    style: TextStyle(
+                          )
+                        : GridView.count(
+                            crossAxisCount: 2,
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 4,
+                            children: [
+                              ...categories.map((category) {
+                                bool isSelected =
+                                    SelectedCategory == category.name;
+                                return GestureDetector(
+                                  onTap: () => setState(() {
+                                    SelectedCategory = category.name;
+                                    SelectedCategoryID = category.id;
+                                  }),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
                                       color: isSelected
-                                          ? Colors.white
-                                          : AppColors.backgrounddarkColor,
-                                      fontSize: 13,
+                                          ? AppColors.dotColor.withValues(
+                                              alpha: 0.3,
+                                            )
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? AppColors.backgrounddarkColor
+                                            : Colors.white,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          category.icon,
+                                          size: 16,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : AppColors.dotColor,
+                                        ),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          category.name,
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : AppColors.backgrounddarkColor,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        GestureDetector(
-                          onTap: () async {
-                            final newCat = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AddCategory(),
-                              ),
-                            );
-                            if (newCat != null) {
-                              setState(() {
-                                categories.add(newCat);
-                              });
-                            }
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: AppColors.backgrounddarkColor,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.add,
-                                  size: 16,
-                                  color: AppColors.dotColor,
-                                ),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Ajouter',
-                                  style: TextStyle(
-                                    color: AppColors.dotColor,
-                                    fontSize: 13,
+                                );
+                              }).toList(),
+                              GestureDetector(
+                                onTap: () async {
+                                  final newCat = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AddCategory(),
+                                    ),
+                                  );
+                                  if (newCat != null) {
+                                    setState(() {
+                                      categories.add(newCat);
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppColors.backgrounddarkColor,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.add,
+                                        size: 16,
+                                        color: AppColors.dotColor,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Ajouter',
+                                        style: TextStyle(
+                                          color: AppColors.dotColor,
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                     SizedBox(height: 24),
                     Text('Date', style: AppStyles.labelStyle),
                     SizedBox(height: 8),
@@ -357,11 +401,35 @@ class _GestionState extends State<Gestion> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _showConfirmation = true;
-                          });
-                          // your actual save logic will go here later
+                        onPressed: () async {
+                          //inal amount = amountController.n;
+                          // actual save logic
+                          if (amount <= 0.00 || SelectedCategoryID == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Merci de remplir tous les champs',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          try {
+                            await _ExpenseService.addExpense(
+                              amount: amount,
+                              description: descriptionController.text,
+                              categoryId: SelectedCategoryID!,
+                              date: SelectedDate,
+                            );
+                            setState(() {
+                              _showConfirmation = true;
+                              _finishInsertingExpense = true;
+                            });
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Erreur: $e')),
+                            );
+                          }
                         },
                         icon: Icon(Icons.check, color: Colors.white),
                         label: Text(
@@ -384,7 +452,17 @@ class _GestionState extends State<Gestion> {
                         ),
                       ),
                     ),
-                    if (_showConfirmation)
+                    if (!_finishInsertingExpense)
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: SpinKitDancingSquare(
+                            color: AppColors.dotColor,
+                            size: 50.0,
+                          ),
+                        ),
+                      ),
+                    if (_showConfirmation && _finishInsertingExpense)
                       Container(
                         width: double.infinity,
                         margin: EdgeInsets.only(top: 16),

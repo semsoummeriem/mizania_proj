@@ -4,6 +4,8 @@ import 'package:mizania_proj/core/constants/styles.dart';
 import 'package:mizania_proj/features/screens/profile/widgets/AppBackground.dart';
 import 'package:mizania_proj/core/widgets/input_fields.dart';
 import 'package:mizania_proj/models/category.dart';
+import 'package:mizania_proj/core/services/supabase_client.dart';
+import 'package:mizania_proj/core/constants/icon_map.dart';
 
 class AddCategory extends StatefulWidget {
   const AddCategory({super.key});
@@ -235,18 +237,36 @@ class _AddCategoryState extends State<AddCategory> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     if (nameController.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Merci d\'entrer un nom')),
                       );
                       return;
                     }
+                    final userID = supabase.auth.currentUser!.id;
+                    final colorHex =
+                        '#${chosenColor.value.toRadixString(16).substring(2)}';
+
+                    final inserted = await supabase
+                        .from('categories')
+                        .insert({
+                          'user_id': userID,
+                          'name': nameController.text.trim(),
+                          'icon': renameIcon(chosenIcon),
+                          'color': colorHex,
+                          'is_default': false,
+                        })
+                        .select()
+                        .single();
                     Navigator.pop(
                       context,
                       Category(
                         icon: chosenIcon,
-                        name: nameController.text.trim(),
+                        name: inserted['name'],
+                        color: inserted['color'],
+                        id: inserted['id'],
+                        isDefault: false,
                       ),
                     );
                   },

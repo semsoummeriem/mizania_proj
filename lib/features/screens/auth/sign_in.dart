@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/styles.dart';
 import '../profile/widgets/AppBackground.dart';
 import '../../../core/widgets/input_fields.dart';
 import '../../../core/widgets/button.dart';
+import 'package:mizania_proj/core/services/supabase_client.dart';
+import 'package:mizania_proj/features/screens/main_navigation_screen.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -81,11 +84,57 @@ class _SignInState extends State<SignIn> {
                   SizedBox(height: 24),
                   Button(
                     text: 'S\'inscrire',
-                    onPressed: () {
+                    onPressed: () async {
                       // routes to home page
                       final name = nameController.text;
                       final email = emailController.text.trim();
                       final password = passwordController.text;
+                      final confirmedPass = confirmPasswordController.text;
+
+                      if (email.isEmpty || name.isEmpty || password.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Merci de remplir tous les champs.'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (confirmedPass != password) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Les mots de passe ne correspondent pas.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      try {
+                        final response = await supabase.auth.signUp(
+                          email: email,
+                          password: password,
+                          data: {'name': name},
+                        );
+                        if (response.user != null) {
+                          await supabase.from('profiles').insert({
+                            'id': response.user!.id,
+                            'name': name,
+                            'role': 'user',
+                          });
+
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MainNavigationScreen(),
+                            ),
+                          );
+                        }
+                      } on AuthException catch (e) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(e.message)));
+                      }
                     },
                   ),
                   SizedBox(height: 24),

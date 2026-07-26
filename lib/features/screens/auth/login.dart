@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/styles.dart';
 import '../profile/widgets/AppBackground.dart';
@@ -7,6 +8,7 @@ import '../../../core/widgets/button.dart';
 import 'package:mizania_proj/features/screens/auth/sign_in.dart';
 import 'package:mizania_proj/features/screens/main_navigation_screen.dart';
 import 'forgot_password.dart';
+import 'package:mizania_proj/core/services/supabase_client.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -91,16 +93,38 @@ class _LoginState extends State<Login> {
                   SizedBox(height: 24),
                   Button(
                     text: 'Se connecter',
-                    onPressed: () {
+                    onPressed: () async {
                       // routes to home page
                       final email = emailController.text.trim();
                       final password = passwordController.text;
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MainNavigationScreen(),
-                        ),
-                      );
+                      if (email.isEmpty || password.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Merci de remplir vos données.'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      try {
+                        final response = await supabase.auth.signInWithPassword(
+                          email: email,
+                          password: password,
+                        );
+                        if (response.user != null) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const MainNavigationScreen(),
+                            ),
+                          );
+                        }
+                      } on AuthException catch (e) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(e.message)));
+                      }
                     },
                   ),
                   SizedBox(height: 24),
