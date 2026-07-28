@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mizania_proj/features/screens/auth/verify_email.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/styles.dart';
@@ -110,6 +111,7 @@ class _SignInState extends State<SignIn> {
                         );
                         return;
                       }
+
                       try {
                         final response = await supabase.auth.signUp(
                           email: email,
@@ -126,7 +128,13 @@ class _SignInState extends State<SignIn> {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => MainNavigationScreen(),
+                              builder: (context) => VerifyEmail(
+                                email: email,
+                                otpType: OtpType.signup,
+                                title: 'Vérifie ton email',
+                                subtitle: 'Entrez le code envoyé à',
+                                nextScreen: const MainNavigationScreen(),
+                              ),
                             ),
                           );
                         }

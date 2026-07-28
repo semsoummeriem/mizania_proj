@@ -4,7 +4,10 @@ import '../../../core/constants/styles.dart';
 import '../profile/widgets/AppBackground.dart';
 import '../../../core/widgets/input_fields.dart';
 import '../../../core/widgets/button.dart';
-import 'verify_email.dart';
+import 'package:mizania_proj/features/screens/auth/verify_email.dart';
+import 'new_password.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mizania_proj/core/services/supabase_client.dart';
 
 class ForgotPassword extends StatefulWidget {
   const ForgotPassword({super.key});
@@ -60,15 +63,36 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                 SizedBox(height: 24),
                 Button(
                   text: 'Envoyer le lien',
-                  onPressed: () {
-                    // routes to home page
+                  onPressed: () async {
                     final email = emailController.text.trim();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const VerifyEmail(),
-                      ),
-                    );
+                    if (email.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Merci d\'entrer votre email')),
+                      );
+                      return;
+                    }
+                    try {
+                      await supabase.auth.resetPasswordForEmail(email);
+
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => VerifyEmail(
+                              email: email,
+                              otpType: OtpType.recovery,
+                              title: 'Code de réinitialisation',
+                              subtitle: 'Entrez le code envoyé à',
+                              nextScreen: const NewPassword(),
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                    }
                   },
                 ),
               ],

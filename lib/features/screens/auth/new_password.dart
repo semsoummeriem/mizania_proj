@@ -4,6 +4,9 @@ import '../../../core/constants/styles.dart';
 import '../profile/widgets/AppBackground.dart';
 import '../../../core/widgets/input_fields.dart';
 import '../../../core/widgets/button.dart';
+import 'package:mizania_proj/core/services/supabase_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'login.dart';
 
 class NewPassword extends StatefulWidget {
   const NewPassword({super.key});
@@ -67,9 +70,42 @@ class _NewPasswordState extends State<NewPassword> {
                 SizedBox(height: 24),
                 Button(
                   text: 'Modifier le mot de passe',
-                  onPressed: () {
+                  onPressed: () async {
                     // routes to home page
                     final password = passwordController.text;
+                    final confirm = confirmPasswordController.text;
+
+                    if (password.isEmpty || confirm.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Merci de remplir tous les champs'),
+                        ),
+                      );
+                      return;
+                    }
+                    try {
+                      await supabase.auth.updateUser(
+                        UserAttributes(password: password),
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Mot de passe modifié avec succès'),
+                          ),
+                        );
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const Login(),
+                          ),
+                          (route) => false,
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                    }
                   },
                 ),
                 SizedBox(height: 24),
