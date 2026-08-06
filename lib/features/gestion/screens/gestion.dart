@@ -59,7 +59,7 @@ class _GestionState extends State<Gestion> {
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   bool _showConfirmation = false;
-  bool _finishInsertingExpense = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -74,6 +74,8 @@ class _GestionState extends State<Gestion> {
     if (widget.initialDate != null) {
       SelectedDate = widget.initialDate!;
     }
+    ;
+    loadCategories();
   }
 
   Future<void> loadCategories() async {
@@ -234,7 +236,7 @@ class _GestionState extends State<Gestion> {
                         ? Center(
                             child: Padding(
                               padding: EdgeInsets.all(18),
-                              child: SpinKitFadingCircle(
+                              child: SpinKitDoubleBounce(
                                 color: AppColors.dotColor,
                                 size: 50.0,
                               ),
@@ -414,6 +416,10 @@ class _GestionState extends State<Gestion> {
                             );
                             return;
                           }
+                          setState(() {
+                            _showConfirmation = false;
+                            _isSaving = true;
+                          });
                           try {
                             await _ExpenseService.addExpense(
                               amount: amount,
@@ -423,9 +429,12 @@ class _GestionState extends State<Gestion> {
                             );
                             setState(() {
                               _showConfirmation = true;
-                              _finishInsertingExpense = true;
+                              _isSaving = false;
                             });
                           } catch (e) {
+                            setState(() {
+                              _isSaving = false;
+                            });
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Erreur: $e')),
                             );
@@ -452,7 +461,7 @@ class _GestionState extends State<Gestion> {
                         ),
                       ),
                     ),
-                    if (!_finishInsertingExpense)
+                    if (_isSaving)
                       Center(
                         child: Padding(
                           padding: EdgeInsets.all(16),
@@ -462,7 +471,7 @@ class _GestionState extends State<Gestion> {
                           ),
                         ),
                       ),
-                    if (_showConfirmation && _finishInsertingExpense)
+                    if (_showConfirmation)
                       Container(
                         width: double.infinity,
                         margin: EdgeInsets.only(top: 16),

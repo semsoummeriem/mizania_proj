@@ -119,29 +119,29 @@ class _SignInState extends State<SignIn> {
                           data: {'name': name},
                         );
                         if (response.user != null) {
-                          await supabase.from('profiles').insert({
-                            'id': response.user!.id,
-                            'name': name,
-                            'role': 'user',
-                          });
-
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VerifyEmail(
-                                email: email,
-                                otpType: OtpType.signup,
-                                title: 'Vérifie ton email',
-                                subtitle: 'Entrez le code envoyé à',
-                                nextScreen: const MainNavigationScreen(),
+                          if (context.mounted) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VerifyEmail(
+                                  email: email,
+                                  otpType: OtpType.signup,
+                                  title: 'Vérifie ton email',
+                                  subtitle: 'Entrez le code envoyé à',
+                                  nextScreen: const MainNavigationScreen(),
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         }
                       } on AuthException catch (e) {
                         ScaffoldMessenger.of(
                           context,
                         ).showSnackBar(SnackBar(content: Text(e.message)));
+                      } catch (e) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
                       }
                     },
                   ),

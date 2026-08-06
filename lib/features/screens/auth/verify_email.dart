@@ -2,8 +2,6 @@ import "package:flutter/material.dart";
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/styles.dart';
 import '../profile/widgets/AppBackground.dart';
-import '../../../core/widgets/input_fields.dart';
-import '../../../core/widgets/button.dart';
 import 'package:mizania_proj/core/services/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -25,14 +23,15 @@ class VerifyEmail extends StatefulWidget {
 
   @override
   State<VerifyEmail> createState() => _VerifyEmailState();
+  
 }
 
 class _VerifyEmailState extends State<VerifyEmail> {
   final List<TextEditingController> _controllers = List.generate(
-    6,
+    8,
     (_) => TextEditingController(),
   );
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  final List<FocusNode> _focusNodes = List.generate(8, (_) => FocusNode());
 
   final TextEditingController emailController = TextEditingController();
 
@@ -56,7 +55,7 @@ class _VerifyEmailState extends State<VerifyEmail> {
   String get _code => _controllers.map((c) => c.text).join();
 
   Future<void> verifyCode() async {
-    if (_code.length != 6) {
+    if (_code.length != 8) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Entrez le code complet")));
@@ -161,7 +160,7 @@ class _VerifyEmailState extends State<VerifyEmail> {
                 SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(6, (index) {
+                  children: List.generate(8, (index) {
                     return SizedBox(
                       width: 45,
                       height: 55,
@@ -192,12 +191,12 @@ class _VerifyEmailState extends State<VerifyEmail> {
                           ),
                         ),
                         onChanged: (value) {
-                          if (value.isNotEmpty && index < 5) {
+                          if (value.isNotEmpty && index < 7) {
                             _focusNodes[index + 1].requestFocus();
                           } else if (value.isEmpty && index > 0) {
                             _focusNodes[index - 1].requestFocus();
                           }
-                          if (index == 5 && value.isNotEmpty) {
+                          if (index == 7 && value.isNotEmpty) {
                             verifyCode();
                           }
                         },

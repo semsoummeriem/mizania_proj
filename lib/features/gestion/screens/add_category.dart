@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mizania_proj/core/constants/colors.dart';
-import 'package:mizania_proj/core/constants/styles.dart';
 import 'package:mizania_proj/features/screens/profile/widgets/AppBackground.dart';
-import 'package:mizania_proj/core/widgets/input_fields.dart';
 import 'package:mizania_proj/models/category.dart';
 import 'package:mizania_proj/core/services/supabase_client.dart';
 import 'package:mizania_proj/core/constants/icon_map.dart';
