@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 import '../../features/screens/profile/currency_model.dart';
+import '../services/profile_service.dart';
 
 /// Une catégorie de dépense avec son montant (utilisée pour le donut chart de la Home).
 class CategoryAmount {
@@ -115,14 +116,73 @@ class AppNotification {
 /// Toute page qui la lit via `AppStateScope.of(context)` se reconstruit
 /// automatiquement dès qu'une valeur change, où que ce soit dans l'app.
 class AppState extends ChangeNotifier {
+  final ProfileService _profileService = ProfileService();
+
   // ---- Profil utilisateur ----
-  String userName = 'Yacine Amrani';
-  String userEmail = 'yacine.amrani@gmail.com';
-  double monthlyIncome = 2000;
+  // Valeurs par défaut affichées le temps que loadProfile() récupère les
+  // vraies données depuis Supabase (évite un écran vide au démarrage).
+  String userName = '...';
+  String userEmail = '...';
+  double monthlyIncome = 0;
   Currency selectedCurrency = availableCurrencies.first;
-  String passwordLastUpdateLabel = 'Dernière modif. il y a 3 mois';
+  String passwordLastUpdateLabel = '...';
   bool isDarkMode = false;
   bool notificationsOn = false;
+
+  // Statistiques calculées depuis Supabase (nombre de dépenses, mois suivis)
+  int expensesCount = 0;
+  int monthsFollowed = 0;
+
+  // true pendant le chargement initial du profil depuis Supabase
+  bool isProfileLoading = false;
+
+  /// À appeler une fois, juste après la connexion/inscription réussie
+  /// (typiquement dans le splash screen ou la page de connexion),
+  /// pour remplir toutes les valeurs ci-dessus avec les vraies données.
+  Future<void> loadProfile() async {
+    isProfileLoading = true;
+    notifyListeners();
+    try {
+      final data = await _profileService.getFullProfile();
+
+      userName = (data['name'] as String?) ?? userName;
+      userEmail = (data['email'] as String?) ?? userEmail;
+      monthlyIncome = (data['revenu_mensuel'] as num?)?.toDouble() ?? monthlyIncome;
+
+      final currencyCode = data['devise'] as String?;
+      if (currencyCode != null) {
+        selectedCurrency = availableCurrencies.firstWhere(
+          (c) => c.code == currencyCode,
+          orElse: () => selectedCurrency,
+        );
+      }
+
+      isDarkMode = (data['mode_sombre'] as bool?) ?? isDarkMode;
+      notificationsOn = (data['notifications_actives'] as bool?) ?? notificationsOn;
+      expensesCount = (data['expenses_count'] as int?) ?? 0;
+      monthsFollowed = (data['months_followed'] as int?) ?? 0;
+      passwordLastUpdateLabel = _formatPasswordLabel(data['password_updated_at'] as String?);
+    } catch (e) {
+      debugPrint('Erreur lors du chargement du profil : $e');
+    } finally {
+      isProfileLoading = false;
+      notifyListeners();
+    }
+  }
+
+  String _formatPasswordLabel(String? isoDate) {
+    if (isoDate == null) return 'Jamais modifié';
+    final date = DateTime.tryParse(isoDate);
+    if (date == null) return 'Jamais modifié';
+    final months = _monthsBetween(date, DateTime.now());
+    if (months <= 0) return 'Dernière modif. à l\'instant';
+    if (months == 1) return 'Dernière modif. il y a 1 mois';
+    return 'Dernière modif. il y a $months mois';
+  }
+
+  int _monthsBetween(DateTime from, DateTime to) {
+    return (to.year - from.year) * 12 + (to.month - from.month);
+  }
 
   // ---- Données du mois affichées sur la Home ----
   // TODO: ces valeurs viendront plus tard du vrai calcul des dépenses
@@ -326,43 +386,90 @@ class AppState extends ChangeNotifier {
   double get totalAllocated => budgetCategories.fold(0, (sum, c) => sum + c.allocated);
   double get unallocatedBudget => monthlyIncome - totalAllocated;
 
-  // ---- Setters : chacun modifie une valeur PUIS appelle notifyListeners() ----
-  // C'est ce notifyListeners() qui déclenche la mise à jour automatique de
-  // toutes les pages qui affichent cette donnée.
+  // ---- Setters "profil" : chacun met à jour Supabase EN PLUS de la
+  // valeur locale. Si la sauvegarde Supabase échoue, on annule le
+  // changement local (rollback) pour ne jamais désynchroniser l'affichage
+  // de la vraie base de données, et on relance l'erreur pour que l'écran
+  // appelant puisse afficher un message.
 
-  void updateUserName(String newName) {
+  Future<void> updateUserName(String newName) async {
+    final previous = userName;
     userName = newName;
     notifyListeners();
+    try {
+      await _profileService.updateName(newName);
+    } catch (e) {
+      userName = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
-  void updateUserEmail(String newEmail) {
-    userEmail = newEmail;
-    notifyListeners();
+  /// Déclenche une demande de changement d'email. Supabase envoie un lien
+  /// de confirmation : l'email affiché ne change réellement qu'après que
+  /// l'utilisateur ait cliqué sur ce lien, donc on NE modifie PAS
+  /// `userEmail` ici, on relance juste l'erreur en cas de souci.
+  Future<void> updateUserEmail(String newEmail) async {
+    await _profileService.requestEmailChange(newEmail);
   }
 
-  void updateMonthlyIncome(double newIncome) {
+  Future<void> updateMonthlyIncome(double newIncome) async {
+    final previous = monthlyIncome;
     monthlyIncome = newIncome;
     notifyListeners();
+    try {
+      await _profileService.updateRevenuMensuel(newIncome);
+    } catch (e) {
+      monthlyIncome = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
-  void updateCurrency(Currency newCurrency) {
+  Future<void> updateCurrency(Currency newCurrency) async {
+    final previous = selectedCurrency;
     selectedCurrency = newCurrency;
     notifyListeners();
+    try {
+      await _profileService.updateDevise(newCurrency.code);
+    } catch (e) {
+      selectedCurrency = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
+  /// À appeler juste après un changement de mot de passe réussi
+  /// (déjà validé côté Supabase par ProfileService.changePassword).
   void markPasswordUpdated() {
     passwordLastUpdateLabel = 'Dernière modif. à l\'instant';
     notifyListeners();
   }
 
-  void setDarkMode(bool value) {
+  Future<void> setDarkMode(bool value) async {
+    final previous = isDarkMode;
     isDarkMode = value;
     notifyListeners();
+    try {
+      await _profileService.updateModeSombre(value);
+    } catch (e) {
+      isDarkMode = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
-  void setNotificationsOn(bool value) {
+  Future<void> setNotificationsOn(bool value) async {
+    final previous = notificationsOn;
     notificationsOn = value;
     notifyListeners();
+    try {
+      await _profileService.updateNotifications(value);
+    } catch (e) {
+      notificationsOn = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   void markAllNotificationsRead() {

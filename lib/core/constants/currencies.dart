@@ -1,0 +1,73 @@
+/// Liste des devises disponibles (norme ISO 4217).
+/// Utilisée dans le sélecteur "Devise" de la page Profil.
+class CurrencyItem {
+  final String code; // ex: EUR
+  final String name; // ex: Euro
+  final String symbol; // ex: €
+
+  const CurrencyItem({
+    required this.code,
+    required this.name,
+    required this.symbol,
+  });
+}
+
+const List<CurrencyItem> kAllCurrencies = [
+  CurrencyItem(code: 'EUR', name: 'Euro', symbol: '€'),
+  CurrencyItem(code: 'USD', name: 'Dollar américain', symbol: '\$'),
+  CurrencyItem(code: 'GBP', name: 'Livre sterling', symbol: '£'),
+  CurrencyItem(code: 'DZD', name: 'Dinar algérien', symbol: 'DA'),
+  CurrencyItem(code: 'MAD', name: 'Dirham marocain', symbol: 'DH'),
+  CurrencyItem(code: 'TND', name: 'Dinar tunisien', symbol: 'DT'),
+  CurrencyItem(code: 'EGP', name: 'Livre égyptienne', symbol: 'E£'),
+  CurrencyItem(code: 'SAR', name: 'Riyal saoudien', symbol: 'ر.س'),
+  CurrencyItem(code: 'AED', name: 'Dirham des Émirats', symbol: 'د.إ'),
+  CurrencyItem(code: 'QAR', name: 'Riyal qatari', symbol: 'ر.ق'),
+  CurrencyItem(code: 'KWD', name: 'Dinar koweïtien', symbol: 'د.ك'),
+  CurrencyItem(code: 'BHD', name: 'Dinar bahreïni', symbol: '.د.ب'),
+  CurrencyItem(code: 'OMR', name: 'Rial omanais', symbol: 'ر.ع.'),
+  CurrencyItem(code: 'JOD', name: 'Dinar jordanien', symbol: 'د.ا'),
+  CurrencyItem(code: 'LBP', name: 'Livre libanaise', symbol: 'ل.ل'),
+  CurrencyItem(code: 'ILS', name: 'Shekel israélien', symbol: '₪'),
+  CurrencyItem(code: 'TRY', name: 'Livre turque', symbol: '₺'),
+  CurrencyItem(code: 'CHF', name: 'Franc suisse', symbol: 'CHF'),
+  CurrencyItem(code: 'CAD', name: 'Dollar canadien', symbol: '\$'),
+  CurrencyItem(code: 'AUD', name: 'Dollar australien', symbol: '\$'),
+  CurrencyItem(code: 'NZD', name: 'Dollar néo-zélandais', symbol: '\$'),
+  CurrencyItem(code: 'JPY', name: 'Yen japonais', symbol: '¥'),
+  CurrencyItem(code: 'CNY', name: 'Yuan chinois', symbol: '¥'),
+  CurrencyItem(code: 'HKD', name: 'Dollar de Hong Kong', symbol: '\$'),
+  CurrencyItem(code: 'SGD', name: 'Dollar de Singapour', symbol: '\$'),
+  CurrencyItem(code: 'KRW', name: 'Won sud-coréen', symbol: '₩'),
+  CurrencyItem(code: 'INR', name: 'Roupie indienne', symbol: '₹'),
+  CurrencyItem(code: 'PKR', name: 'Roupie pakistanaise', symbol: '₨'),
+  CurrencyItem(code: 'IDR', name: 'Roupie indonésienne', symbol: 'Rp'),
+  CurrencyItem(code: 'MYR', name: 'Ringgit malaisien', symbol: 'RM'),
+  CurrencyItem(code: 'THB', name: 'Baht thaïlandais', symbol: '฿'),
+  CurrencyItem(code: 'PHP', name: 'Peso philippin', symbol: '₱'),
+  CurrencyItem(code: 'VND', name: 'Dong vietnamien', symbol: '₫'),
+  CurrencyItem(code: 'RUB', name: 'Rouble russe', symbol: '₽'),
+  CurrencyItem(code: 'UAH', name: 'Hryvnia ukrainienne', symbol: '₴'),
+  CurrencyItem(code: 'PLN', name: 'Zloty polonais', symbol: 'zł'),
+  CurrencyItem(code: 'CZK', name: 'Couronne tchèque', symbol: 'Kč'),
+  CurrencyItem(code: 'HUF', name: 'Forint hongrois', symbol: 'Ft'),
+  CurrencyItem(code: 'RON', name: 'Leu roumain', symbol: 'lei'),
+  CurrencyItem(code: 'BGN', name: 'Lev bulgare', symbol: 'лв'),
+  CurrencyItem(code: 'SEK', name: 'Couronne suédoise', symbol: 'kr'),
+  CurrencyItem(code: 'NOK', name: 'Couronne norvégienne', symbol: 'kr'),
+  CurrencyItem(code: 'DKK', name: 'Couronne danoise', symbol: 'kr'),
+  CurrencyItem(code: 'ISK', name: 'Couronne islandaise', symbol: 'kr'),
+  CurrencyItem(code: 'BRL', name: 'Real brésilien', symbol: 'R\$'),
+  CurrencyItem(code: 'MXN', name: 'Peso mexicain', symbol: '\$'),
+  CurrencyItem(code: 'ARS', name: 'Peso argentin', symbol: '\$'),
+  CurrencyItem(code: 'CLP', name: 'Peso chilien', symbol: '\$'),
+  CurrencyItem(code: 'COP', name: 'Peso colombien', symbol: '\$'),
+  CurrencyItem(code: 'PEN', name: 'Sol péruvien', symbol: 'S/'),
+  CurrencyItem(code: 'ZAR', name: 'Rand sud-africain', symbol: 'R'),
+  CurrencyItem(code: 'NGN', name: 'Naira nigérian', symbol: '₦'),
+  CurrencyItem(code: 'KES', name: 'Shilling kényan', symbol: 'KSh'),
+  CurrencyItem(code: 'GHS', name: 'Cedi ghanéen', symbol: 'GH₵'),
+  CurrencyItem(code: 'XOF', name: 'Franc CFA (UEMOA)', symbol: 'CFA'),
+  CurrencyItem(code: 'XAF', name: 'Franc CFA (CEMAC)', symbol: 'FCFA'),
+  CurrencyItem(code: 'ETB', name: 'Birr éthiopien', symbol: 'Br'),
+];

@@ -14,14 +14,37 @@ import 'currency_model.dart';
 import 'choose_currency_screen.dart';
 import 'export_profile_pdf.dart';
 import '../auth/splash_screen.dart';
+import '../../../core/services/profile_service.dart';
 
 /// Page Profil.
 /// IMPORTANT : cette page ne stocke plus le nom, l'email, le revenu, etc.
 /// dans ses propres variables. Elle lit et modifie tout ça directement dans
 /// l'AppState (via AppStateScope.of(context)), pour que la Home (et toute
 /// future page) affiche toujours les mêmes valeurs à jour.
-class ProfileScreen extends StatelessWidget {
+///
+/// Elle est en StatefulWidget uniquement pour pouvoir déclencher le
+/// chargement des données Supabase (appState.loadProfile()) au premier
+/// affichage, si ce n'est pas déjà fait ailleurs (ex: au splash screen).
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = AppStateScope.of(context);
+      // On ne recharge que si ce n'est pas déjà fait (évite un appel
+      // réseau inutile à chaque fois qu'on revient sur cet onglet).
+      if (appState.userName == '...' && !appState.isProfileLoading) {
+        appState.loadProfile();
+      }
+    });
+  }
 
   // Transforme un nombre en texte lisible avec espace tous les 3 chiffres (ex: 2500 -> "2 500")
   String _formatAmount(double value) {
@@ -42,30 +65,40 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundlightColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(appState),
-              const SizedBox(height: 24),
-              _buildSectionTitle('COMPTE'),
-              const SizedBox(height: 12),
-              _buildAccountCard(context, appState),
-              const SizedBox(height: 24),
-              _buildSectionTitle('PRÉFÉRENCES'),
-              const SizedBox(height: 12),
-              _buildPreferencesCard(context, appState),
-              const SizedBox(height: 24),
-              _buildSectionTitle('DONNÉES'),
-              const SizedBox(height: 12),
-              _buildExportCard(context, appState),
-              const SizedBox(height: 20),
-              _buildLogoutButton(context),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
+        child: appState.isProfileLoading && appState.userName == '...'
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(appState),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('COMPTE'),
+                    const SizedBox(height: 12),
+                    _buildAccountCard(context, appState),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('PRÉFÉRENCES'),
+                    const SizedBox(height: 12),
+                    _buildPreferencesCard(context, appState),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('DONNÉES'),
+                    const SizedBox(height: 12),
+                    _buildExportCard(context, appState),
+                    const SizedBox(height: 20),
+                    _buildLogoutButton(context),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
       ),
+    );
+  }
+
+  // ---- Petit helper pour afficher une erreur sous forme de SnackBar ----
+  void _showError(BuildContext context, Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppColors.redColor),
     );
   }
 
@@ -77,7 +110,11 @@ class ProfileScreen extends StatelessWidget {
       MaterialPageRoute(builder: (_) => EditNameScreen(currentName: appState.userName)),
     );
     if (newName != null && newName.trim().isNotEmpty) {
-      appState.updateUserName(newName.trim());
+      try {
+        await appState.updateUserName(newName.trim());
+      } catch (e) {
+        if (context.mounted) _showError(context, e);
+      }
     }
   }
 
@@ -87,7 +124,18 @@ class ProfileScreen extends StatelessWidget {
       MaterialPageRoute(builder: (_) => EditEmailScreen(currentEmail: appState.userEmail)),
     );
     if (newEmail != null && newEmail.trim().isNotEmpty) {
-      appState.updateUserEmail(newEmail.trim());
+      try {
+        await appState.updateUserEmail(newEmail.trim());
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Un email de confirmation a été envoyé à ta nouvelle adresse.'),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) _showError(context, e);
+      }
     }
   }
 
@@ -112,7 +160,11 @@ class ProfileScreen extends StatelessWidget {
       MaterialPageRoute(builder: (_) => EditIncomeScreen(currentIncome: appState.monthlyIncome)),
     );
     if (newIncome != null && newIncome > 0) {
-      appState.updateMonthlyIncome(newIncome);
+      try {
+        await appState.updateMonthlyIncome(newIncome);
+      } catch (e) {
+        if (context.mounted) _showError(context, e);
+      }
     }
   }
 
@@ -124,24 +176,31 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
     if (newCurrency != null) {
-      appState.updateCurrency(newCurrency);
+      try {
+        await appState.updateCurrency(newCurrency);
+      } catch (e) {
+        if (context.mounted) _showError(context, e);
+      }
     }
   }
 
-  void _logout(BuildContext context) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const SplashScreen()),
-      (route) => false,
-    );
+  Future<void> _logout(BuildContext context) async {
+    await ProfileService().signOut();
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const SplashScreen()),
+        (route) => false,
+      );
+    }
   }
 
-  Future<void> _exportData(AppState appState) async {
+  Future<void> _exportData(BuildContext context, AppState appState) async {
     await exportProfilePdf(
       name: appState.userName,
       email: appState.userEmail,
-      expensesCount: '247',
-      monthsTracked: '8',
+      expensesCount: appState.expensesCount.toString(),
+      monthsTracked: appState.monthsFollowed.toString(),
       monthlyIncomeFormatted: '${_formatAmount(appState.monthlyIncome)} ${appState.selectedCurrency.symbol}',
       currencyLabel: '${appState.selectedCurrency.name} (${appState.selectedCurrency.symbol})',
       appearanceLabel: appState.isDarkMode ? 'Mode sombre' : 'Mode clair',
@@ -189,17 +248,17 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: ProfileStatCard(
-                          value: '247',
+                          value: appState.expensesCount.toString(),
                           label: 'Dépenses',
                           valueColor: AppColors.roseColor,
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         child: ProfileStatCard(
-                          value: '8',
+                          value: appState.monthsFollowed.toString(),
                           label: 'Mois suivis',
                           valueColor: AppColors.greenColor,
                         ),
@@ -303,9 +362,15 @@ class ProfileScreen extends StatelessWidget {
             title: 'Apparence',
             subtitle: appState.isDarkMode ? 'Mode sombre' : 'Mode clair',
             trailing: Switch(
-value: appState.isDarkMode,
+              value: appState.isDarkMode,
               activeThumbColor: AppColors.darkmauveColor,
-              onChanged: (value) => appState.setDarkMode(value),
+              onChanged: (value) async {
+                try {
+                  await appState.setDarkMode(value);
+                } catch (e) {
+                  if (context.mounted) _showError(context, e);
+                }
+              },
             ),
           ),
           const Divider(height: 1, color: AppColors.dividerColor),
@@ -315,9 +380,15 @@ value: appState.isDarkMode,
             title: 'Notifications',
             subtitle: 'Alertes budget activées',
             trailing: Switch(
-value: appState.notificationsOn,
+              value: appState.notificationsOn,
               activeThumbColor: AppColors.darkmauveColor,
-              onChanged: (value) => appState.setNotificationsOn(value),
+              onChanged: (value) async {
+                try {
+                  await appState.setNotificationsOn(value);
+                } catch (e) {
+                  if (context.mounted) _showError(context, e);
+                }
+              },
             ),
           ),
         ],
@@ -335,7 +406,7 @@ value: appState.notificationsOn,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => _exportData(appState),
+        onTap: () => _exportData(context, appState),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(

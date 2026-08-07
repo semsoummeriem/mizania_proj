@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/styles.dart';
+import '../../../core/services/profile_service.dart';
 
 /// Page "Changer le mot de passe".
 /// On ne reçoit et on ne renvoie aucune valeur sensible : on renvoie juste
@@ -17,8 +18,10 @@ class _EditPasswordScreenState extends State<EditPasswordScreen> {
   final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  final ProfileService _profileService = ProfileService();
 
   String? _errorText;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -63,7 +66,7 @@ class _EditPasswordScreenState extends State<EditPasswordScreen> {
     }
   }
 
-  void _updatePassword() {
+  Future<void> _updatePassword() async {
     final current = _currentPasswordController.text;
     final newPassword = _newPasswordController.text;
     final confirm = _confirmPasswordController.text;
@@ -81,9 +84,25 @@ class _EditPasswordScreenState extends State<EditPasswordScreen> {
       return;
     }
 
-    setState(() => _errorText = null);
-    // TODO: envoyer `current` et `newPassword` au backend pour vérification + mise à jour
-    Navigator.pop(context, true);
+    setState(() {
+      _errorText = null;
+      _isSubmitting = true;
+    });
+
+    try {
+      await _profileService.changePassword(
+        oldPassword: current,
+        newPassword: newPassword,
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorText = e.toString().replaceFirst('Exception: ', '');
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -159,6 +178,7 @@ class _EditPasswordScreenState extends State<EditPasswordScreen> {
       ),
       child: TextField(
         controller: controller,
+        obscureText: true,
         style: AppStyles.inputTextStyle,
         decoration: const InputDecoration(
           border: InputBorder.none,
@@ -191,14 +211,20 @@ class _EditPasswordScreenState extends State<EditPasswordScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _updatePassword,
+        onPressed: _isSubmitting ? null : _updatePassword,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.darkmauveColor,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
-        child: const Text('Mettre à jour', style: AppStyles.buttonTextStyle),
+        child: _isSubmitting
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.whiteColor),
+              )
+            : const Text('Mettre à jour', style: AppStyles.buttonTextStyle),
       ),
     );
   }
