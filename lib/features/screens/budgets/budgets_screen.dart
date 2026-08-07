@@ -16,18 +16,33 @@ class BudgetsScreen extends StatefulWidget {
 
 class _BudgetsScreenState extends State<BudgetsScreen> {
   String _selectedPreset = 'Équilibré';
+  bool _isSaving = false;
 
   // NOTE PÉDAGOGIQUE : ces présets sont des valeurs fixes pour l'instant,
   // pas encore de vrai calcul basé sur des pourcentages du revenu.
   // "Équilibré" correspond aux valeurs par défaut déjà dans AppState.
+  // "Logement" retiré : cette catégorie n'existe plus dans Supabase.
   static const Map<String, double> _balancedPreset = {
-    'Nourriture': 400, 'Transport': 150, 'Logement': 500,
+    'Nourriture': 400, 'Transport': 150,
     'Loisirs': 200, 'Santé': 100, 'Autres': 120,
   };
   static const Map<String, double> _economPreset = {
-    'Nourriture': 300, 'Transport': 100, 'Logement': 500,
+    'Nourriture': 300, 'Transport': 100,
     'Loisirs': 100, 'Santé': 100, 'Autres': 50,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = AppStateScope.of(context);
+      // On ne recharge que si ce n'est pas déjà fait (évite un appel
+      // réseau inutile à chaque fois qu'on revient sur cet onglet).
+      if (appState.budgetCategories.isEmpty && !appState.isBudgetLoading) {
+        appState.loadBudgetCategories();
+      }
+    });
+  }
 
   void _applyPreset(String preset, AppState appState) {
     setState(() => _selectedPreset = preset);
@@ -39,10 +54,27 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     // "Personnalisé" ne change rien : l'utilisateur ajuste chaque champ manuellement.
   }
 
-  void _saveBudget() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Budget enregistré avec succès')),
-    );
+  Future<void> _saveBudget(AppState appState) async {
+    setState(() => _isSaving = true);
+    try {
+      await appState.saveBudgetToSupabase();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Budget enregistré avec succès')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'enregistrement : ${e.toString().replaceFirst('Exception: ', '')}'),
+            backgroundColor: AppColors.redColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -54,6 +86,13 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     final progress = appState.monthlyIncome > 0
         ? (totalAllocated / appState.monthlyIncome).clamp(0.0, 1.0)
         : 0.0;
+
+    if (appState.isBudgetLoading && appState.budgetCategories.isEmpty) {
+      return const Scaffold(
+        backgroundColor: AppColors.backgroundlightColor,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundlightColor,
@@ -96,7 +135,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               const SizedBox(height: 8),
               _buildTotalSummary(appState, symbol, totalAllocated, unallocated, progress),
               const SizedBox(height: 20),
-              _buildSaveButton(),
+              _buildSaveButton(appState),
               const SizedBox(height: 20),
             ],
           ),
@@ -268,15 +307,21 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(AppState appState) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          onPressed: _saveBudget,
-          icon: const Icon(Icons.check, color: AppColors.whiteColor),
-          label: const Text('Enregistrer le budget', style: BudgetStyles.saveButtonStyle),
+          onPressed: _isSaving ? null : () => _saveBudget(appState),
+          icon: _isSaving
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.whiteColor),
+                )
+              : const Icon(Icons.check, color: AppColors.whiteColor),
+          label: Text(_isSaving ? 'Enregistrement...' : 'Enregistrer le budget', style: BudgetStyles.saveButtonStyle),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.darkmauveColor,
             elevation: 0,

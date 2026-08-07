@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
-import '../../../core/state/app_state.dart';
-import '../../../core/state/app_state_scope.dart';
+import '../../../core/services/expense_service.dart';
+import '../../../core/services/supabase_client.dart';
 import 'historique_styles.dart';
+import 'historique_screen.dart' show CategoryOption, iconFromName, colorFromHex;
 
 /// Page "Detail d'une depense".
-/// Reçoit l'ID de la dépense, la retrouve dans AppState, et permet de :
+/// Charge la dépense depuis Supabase à partir de son ID, et permet de :
 /// - la voir (description, catégorie, date)
 /// - la modifier (les champs deviennent éditables)
 /// - la supprimer (avec confirmation)
@@ -19,10 +20,22 @@ class ExpenseDetailScreen extends StatefulWidget {
 }
 
 class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
+  final ExpenseService _expenseService = ExpenseService();
+
+  bool _isLoading = true;
   bool _isEditing = false;
+  bool _isSaving = false;
+
   late TextEditingController _descriptionController;
-  late String _selectedCategory;
   late DateTime _selectedDate;
+  late double _amount; // pas éditable ici, mais gardé pour ne pas l'écraser à l'enregistrement
+
+  int? _selectedCategoryId;
+  String _selectedCategoryName = '';
+  IconData _selectedCategoryIcon = Icons.category_outlined;
+  Color _selectedCategoryColor = AppColors.darkmauveColor;
+
+  List<CategoryOption> _categories = [];
 
   static const List<String> _monthNames = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -32,23 +45,8 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // On initialise les champs une seule fois, à l'ouverture de la page.
-    // (fait dans didChangeDependencies pour pouvoir lire l'AppState en toute sécurité)
-  }
-
-  bool _initialized = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_initialized) {
-      final appState = AppStateScope.of(context);
-      final expense = appState.expenses.firstWhere((e) => e.id == widget.expenseId);
-      _descriptionController = TextEditingController(text: expense.description);
-      _selectedCategory = expense.category;
-      _selectedDate = expense.date;
-      _initialized = true;
-    }
+    _descriptionController = TextEditingController();
+    _load();
   }
 
   @override
@@ -57,27 +55,68 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _pickCategory(AppState appState) async {
-    final categories = appState.budgetCategories;
-    final chosen = await showModalBottomSheet<String>(
+  Future<void> _load() async {
+    setState(() => _isLoading = true);
+
+    // Charge la liste des catégories (pour le sélecteur) + la dépense elle-même en parallèle
+    final categoriesData = await supabase.from('categories').select('id, name, icon, color');
+    final expenseRow = await supabase
+        .from('depense')
+        .select('id, description, amount, date, category_id, categories(id, name, icon, color)')
+        .eq('id', int.parse(widget.expenseId))
+        .single();
+
+    final categoryData = expenseRow['categories'] as Map<String, dynamic>?;
+
+    setState(() {
+      _categories = List<Map<String, dynamic>>.from(categoriesData).map((row) {
+        return CategoryOption(
+          id: row['id'] as int,
+          name: row['name'] as String,
+          icon: iconFromName(row['icon'] as String),
+          color: colorFromHex(row['color'] as String),
+        );
+      }).toList();
+
+      _descriptionController.text = (expenseRow['description'] as String?) ?? '';
+      _amount = (expenseRow['amount'] as num).toDouble();
+      _selectedDate = DateTime.parse(expenseRow['date'] as String);
+      _selectedCategoryId = expenseRow['category_id'] as int?;
+      _selectedCategoryName = (categoryData?['name'] as String?) ?? 'Autres';
+      _selectedCategoryIcon = iconFromName((categoryData?['icon'] as String?) ?? 'category');
+      _selectedCategoryColor = colorFromHex((categoryData?['color'] as String?) ?? '#9E9E9E');
+
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _pickCategory() async {
+    final chosen = await showModalBottomSheet<CategoryOption>(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: categories
+            children: _categories
                 .map((c) => ListTile(
                       leading: Icon(c.icon, color: AppColors.darkmauveColor),
-                      title: Text(c.label),
-                      onTap: () => Navigator.pop(context, c.label),
+                      title: Text(c.name),
+                      onTap: () => Navigator.pop(context, c),
                     ))
                 .toList(),
           ),
         );
       },
     );
-    if (chosen != null) setState(() => _selectedCategory = chosen);
+    if (chosen != null) {
+      setState(() {
+        _selectedCategoryId = chosen.id;
+        _selectedCategoryName = chosen.name;
+        _selectedCategoryIcon = chosen.icon;
+        _selectedCategoryColor = chosen.color;
+      });
+    }
   }
 
   Future<void> _pickDate() async {
@@ -90,20 +129,35 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
-  void _saveChanges(AppState appState) {
-    appState.updateExpense(
-      widget.expenseId,
-      description: _descriptionController.text.trim(),
-      category: _selectedCategory,
-      date: _selectedDate,
-    );
-    setState(() => _isEditing = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Dépense mise à jour')),
-    );
+  Future<void> _saveChanges() async {
+    if (_selectedCategoryId == null) return;
+    setState(() => _isSaving = true);
+    try {
+      await _expenseService.updateExpense(
+        id: int.parse(widget.expenseId),
+        amount: _amount,
+        description: _descriptionController.text.trim(),
+        categoryId: _selectedCategoryId!,
+        date: _selectedDate,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isEditing = false;
+        _isSaving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dépense mise à jour')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la mise à jour : $e')),
+      );
+    }
   }
 
-  Future<void> _confirmDelete(AppState appState) async {
+  Future<void> _confirmDelete() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -120,16 +174,25 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
     );
 
     if (confirmed == true) {
-      appState.deleteExpense(widget.expenseId);
-      if (mounted) Navigator.pop(context);
+      setState(() => _isSaving = true);
+      try {
+        await _expenseService.deleteExpense(int.parse(widget.expenseId));
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la suppression : $e')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final appState = AppStateScope.of(context);
-
-    if (!_initialized) return const Scaffold(body: SizedBox());
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundlightColor,
@@ -149,15 +212,15 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
                   const SizedBox(height: 20),
                   const Text('CATÉGORIE', style: HistoriqueStyles.dateSectionStyle),
                   const SizedBox(height: 8),
-                  _buildCategoryField(appState),
+                  _buildCategoryField(),
                   const SizedBox(height: 20),
                   const Text('DATE', style: HistoriqueStyles.dateSectionStyle),
                   const SizedBox(height: 8),
                   _buildDateField(),
                   const SizedBox(height: 32),
-                  _buildDeleteButton(appState),
+                  _buildDeleteButton(),
                   const SizedBox(height: 12),
-                  _buildEditButton(appState),
+                  _buildEditButton(),
                 ],
               ),
             ),
@@ -209,15 +272,10 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
     );
   }
 
-  Widget _buildCategoryField(AppState appState) {
-    final category = appState.budgetCategories.firstWhere(
-      (c) => c.label == _selectedCategory,
-      orElse: () => appState.budgetCategories.first,
-    );
-
+  Widget _buildCategoryField() {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: _isEditing ? () => _pickCategory(appState) : null,
+      onTap: _isEditing ? _pickCategory : null,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -231,11 +289,14 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
             Container(
               width: 36,
               height: 36,
-              decoration: BoxDecoration(color: category.iconBackground, borderRadius: BorderRadius.circular(10)),
-              child: Icon(category.icon, size: 18, color: AppColors.darkmauveColor),
+              decoration: BoxDecoration(
+                color: _selectedCategoryColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(_selectedCategoryIcon, size: 18, color: AppColors.darkmauveColor),
             ),
             const SizedBox(width: 12),
-            Text(_selectedCategory, style: HistoriqueStyles.expenseCategoryStyle),
+            Text(_selectedCategoryName, style: HistoriqueStyles.expenseCategoryStyle),
             if (_isEditing) ...[
               const Spacer(),
               const Icon(Icons.expand_more, color: AppColors.smalltextColor),
@@ -279,11 +340,11 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
     );
   }
 
-  Widget _buildDeleteButton(AppState appState) {
+  Widget _buildDeleteButton() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: () => _confirmDelete(appState),
+        onPressed: _isSaving ? null : _confirmDelete,
         icon: const Icon(Icons.delete_outline, color: AppColors.whiteColor),
         label: const Text('Supprimer la depense', style: TextStyle(color: AppColors.whiteColor, fontWeight: FontWeight.w600)),
         style: ElevatedButton.styleFrom(
@@ -296,18 +357,25 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
     );
   }
 
-  Widget _buildEditButton(AppState appState) {
+  Widget _buildEditButton() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: () {
-          if (_isEditing) {
-            _saveChanges(appState);
-          } else {
-            setState(() => _isEditing = true);
-          }
-        },
-        icon: Icon(_isEditing ? Icons.check : Icons.edit_outlined, color: AppColors.whiteColor),
+        onPressed: _isSaving
+            ? null
+            : () {
+                if (_isEditing) {
+                  _saveChanges();
+                } else {
+                  setState(() => _isEditing = true);
+                }
+              },
+        icon: _isSaving
+            ? const SizedBox(
+                width: 16, height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.whiteColor),
+              )
+            : Icon(_isEditing ? Icons.check : Icons.edit_outlined, color: AppColors.whiteColor),
         label: Text(
           _isEditing ? 'Enregistrer les modifications' : 'Modifier la depense',
           style: const TextStyle(color: AppColors.whiteColor, fontWeight: FontWeight.w600),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
+import '../constants/icon_map.dart';
 import '../../features/screens/profile/currency_model.dart';
 import '../services/profile_service.dart';
+import '../services/budget_service.dart';
 
 /// Une catégorie de dépense avec son montant (utilisée pour le donut chart de la Home).
 class CategoryAmount {
@@ -58,19 +60,25 @@ class Expense {
 
 /// Le budget alloué à une catégorie de dépense (page Budgets).
 class BudgetCategory {
+  final int? categoryId; // id réel de la catégorie dans Supabase (null = ancien mock)
   final String label;
   final IconData icon;
   final Color iconBackground;
   final Color accentColor;
   double allocated;
+  double spent; // total réellement dépensé ce mois-ci dans cette catégorie
 
   BudgetCategory({
+    this.categoryId,
     required this.label,
     required this.icon,
     required this.iconBackground,
     required this.accentColor,
     required this.allocated,
+    this.spent = 0,
   });
+
+  bool get isOverBudget => allocated > 0 && spent > allocated;
 }
 
 /// Une notification affichée sur la page Notifications.
@@ -338,50 +346,93 @@ class AppState extends ChangeNotifier {
   ];
 
   // ---- Budget par catégorie (page Budgets) ----
-  List<BudgetCategory> budgetCategories = [
-    BudgetCategory(
-      label: 'Nourriture',
-      icon: Icons.shopping_cart_outlined,
-      iconBackground: AppColors.blueLightColor,
-      accentColor: AppColors.amberColor,
-      allocated: 400,
-    ),
-    BudgetCategory(
-      label: 'Transport',
-      icon: Icons.directions_bus_outlined,
-      iconBackground: AppColors.greenLightColor,
-      accentColor: AppColors.blueColor,
-      allocated: 150,
-    ),
-    BudgetCategory(
-      label: 'Logement',
-      icon: Icons.home_outlined,
-      iconBackground: AppColors.greenLightColor,
-      accentColor: AppColors.greenColor,
-      allocated: 500,
-    ),
-    BudgetCategory(
-      label: 'Loisirs',
-      icon: Icons.movie_outlined,
-      iconBackground: AppColors.redLightColor,
-      accentColor: AppColors.darkmauveColor,
-      allocated: 200,
-    ),
-    BudgetCategory(
-      label: 'Santé',
-      icon: Icons.medication_outlined,
-      iconBackground: AppColors.orangeLightColor,
-      accentColor: Color(0xFF8B5E34),
-      allocated: 100,
-    ),
-    BudgetCategory(
-      label: 'Autres',
-      icon: Icons.inventory_2_outlined,
-      iconBackground: AppColors.purpleLightColor,
-      accentColor: AppColors.darkmauveColor,
-      allocated: 120,
-    ),
-  ];
+  // Ancienne liste fixe supprimée : les catégories viennent maintenant de
+  // Supabase (catégories par défaut + catégories perso de l'utilisateur),
+  // via loadBudgetCategories() ci-dessous.
+  final BudgetService _budgetService = BudgetService();
+  List<BudgetCategory> budgetCategories = [];
+  bool isBudgetLoading = false;
+
+  // Mois actuellement affiché sur la page Budget (toujours le mois en cours
+  // pour l'instant, pas de navigation entre les mois).
+  final DateTime currentBudgetMonthDate = DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+  Color _hexToColor(String hex) {
+    final cleaned = hex.replaceFirst('#', '');
+    final withAlpha = cleaned.length == 6 ? 'ff$cleaned' : cleaned;
+    return Color(int.parse(withAlpha, radix: 16));
+  }
+
+  /// Charge les catégories (par défaut + perso), le budget déjà enregistré
+  /// pour le mois en cours, et les vraies dépenses du mois par catégorie.
+  /// À appeler à l'ouverture de la page Budget.
+  Future<void> loadBudgetCategories() async {
+    isBudgetLoading = true;
+    notifyListeners();
+    try {
+      final categoriesData = await _budgetService.getUserCategories();
+      final budgetData = await _budgetService.getBudgetForMonth(currentBudgetMonthDate);
+      final spentData = await _budgetService.getSpentForMonth(currentBudgetMonthDate);
+
+      budgetCategories = categoriesData.map((row) {
+        final id = row['id'] as int;
+        final color = _hexToColor((row['color'] as String?) ?? '#8B5E34');
+        return BudgetCategory(
+          categoryId: id,
+          label: row['name'] as String,
+          icon: iconname((row['icon'] as String?) ?? 'category'),
+          iconBackground: color.withValues(alpha: 0.15),
+          accentColor: color,
+          allocated: budgetData[id] ?? 0,
+          spent: spentData[id] ?? 0,
+        );
+      }).toList();
+
+      _checkOverspendNotifications();
+    } catch (e) {
+      debugPrint('Erreur lors du chargement du budget : $e');
+    } finally {
+      isBudgetLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Sauvegarde le budget actuel (toutes les catégories) pour le mois en
+  /// cours dans Supabase.
+  Future<void> saveBudgetToSupabase() async {
+    final allocations = <int, double>{
+      for (final category in budgetCategories)
+        if (category.categoryId != null) category.categoryId!: category.allocated,
+    };
+    await _budgetService.saveBudget(currentBudgetMonthDate, allocations);
+  }
+
+  /// Ajoute une notification (dans la liste affichée sur la page
+  /// Notifications) pour chaque catégorie qui dépasse son budget, en
+  /// évitant les doublons si la notification existe déjà.
+  void _checkOverspendNotifications() {
+    for (final category in budgetCategories) {
+      if (!category.isOverBudget) continue;
+
+      final title = 'Budget ${category.label} dépassé';
+      final alreadyNotified = notifications.any((n) => n.title == title);
+      if (alreadyNotified) continue;
+
+      notifications.insert(
+        0,
+        AppNotification(
+          title: title,
+          message:
+              'Tu as dépensé ${category.spent.toStringAsFixed(0)} ${selectedCurrency.symbol} '
+              'sur ${category.allocated.toStringAsFixed(0)} ${selectedCurrency.symbol} prévus ce mois-ci.',
+          time: 'À l\'instant',
+          icon: Icons.warning_amber_rounded,
+          iconBackground: AppColors.redLightColor,
+          iconColor: AppColors.redColor,
+        ),
+      );
+    }
+  }
 
   double get totalAllocated => budgetCategories.fold(0, (sum, c) => sum + c.allocated);
   double get unallocatedBudget => monthlyIncome - totalAllocated;

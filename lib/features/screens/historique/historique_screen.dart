@@ -2,9 +2,50 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/state/app_state.dart';
 import '../../../core/state/app_state_scope.dart';
+import '../../../core/services/expense_service.dart';
+import '../../../core/services/supabase_client.dart';
 import 'historique_styles.dart';
 import 'widgets/expense_tile.dart';
 import 'expense_detail_screen.dart';
+
+/// Une catégorie telle que stockée dans Supabase (table `categories`),
+/// convertie en IconData/Color utilisables par Flutter.
+class CategoryOption {
+  final int id;
+  final String name;
+  final IconData icon;
+  final Color color;
+
+  const CategoryOption({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.color,
+  });
+}
+
+/// Convertit le nom d'icône stocké en base (ex: "fastfood") en IconData Flutter.
+/// Complète cette liste si tu ajoutes de nouvelles catégories avec une autre icône.
+IconData iconFromName(String name) {
+  switch (name) {
+    case 'fastfood':
+      return Icons.fastfood_outlined;
+    case 'directions_car':
+      return Icons.directions_car_outlined;
+    case 'local_pharmacy':
+      return Icons.local_pharmacy_outlined;
+    case 'sports_esports':
+      return Icons.sports_esports_outlined;
+    default:
+      return Icons.category_outlined;
+  }
+}
+
+/// Convertit une couleur hexadécimale ("#EC4899") stockée en base en Color Flutter.
+Color colorFromHex(String hex) {
+  final cleaned = hex.replaceAll('#', '');
+  return Color(int.parse('FF$cleaned', radix: 16));
+}
 
 /// Page "Historique" : liste de toutes les dépenses, groupées par jour,
 /// avec navigation par mois, recherche et filtre par catégorie.
@@ -16,48 +57,133 @@ class HistoriqueScreen extends StatefulWidget {
 }
 
 class _HistoriqueScreenState extends State<HistoriqueScreen> {
-  // Mois affiché actuellement (par défaut : juin 2026, comme sur la maquette)
-  DateTime _displayedMonth = DateTime(2026, 6);
+  final ExpenseService _expenseService = ExpenseService();
+
+  DateTime _displayedMonth = DateTime.now();
   String _searchQuery = '';
   String _selectedCategory = 'Tout';
+
+  bool _isLoading = true;
+  List<Expense> _expenses = [];
+  List<CategoryOption> _categories = [];
+
+  double _totalSpent = 0;
+  double _revenue = 0;
+  double _balance = 0;
 
   static const List<String> _monthNames = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadCategories();
+    await _loadData();
+  }
+
+  // Charge une seule fois la liste des catégories (pour les chips de filtre
+  // et pour convertir category_id <-> nom de catégorie).
+  Future<void> _loadCategories() async {
+    final data = await supabase.from('categories').select('id, name, icon, color');
+    setState(() {
+      _categories = List<Map<String, dynamic>>.from(data).map((row) {
+        return CategoryOption(
+          id: row['id'] as int,
+          name: row['name'] as String,
+          icon: iconFromName(row['icon'] as String),
+          color: colorFromHex(row['color'] as String),
+        );
+      }).toList();
+    });
+  }
+
+  // Retrouve l'id Supabase correspondant au nom de catégorie sélectionné dans les chips.
+  int? _selectedCategoryId() {
+    if (_selectedCategory == 'Tout') return null;
+    final match = _categories.where((c) => c.name == _selectedCategory);
+    return match.isEmpty ? null : match.first.id;
+  }
+
+  // Recharge le résumé (Dépenses/Revenu/Solde) ET la liste des dépenses,
+  // en fonction du mois, de la catégorie et de la recherche actuels.
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    final resume = await _expenseService.getResumeMensuel(
+      year: _displayedMonth.year,
+      month: _displayedMonth.month,
+    );
+
+    final rows = await _expenseService.getDepensesDuMois(
+      year: _displayedMonth.year,
+      month: _displayedMonth.month,
+      categoryId: _selectedCategoryId(),
+      search: _searchQuery,
+    );
+
+    setState(() {
+      _totalSpent = (resume['total_depenses'] as num).toDouble();
+      _revenue = (resume['revenu_mensuel'] as num).toDouble();
+      _balance = (resume['solde'] as num).toDouble();
+      _expenses = rows.map(_expenseFromRow).toList();
+      _isLoading = false;
+    });
+  }
+
+  // Convertit une ligne brute Supabase (avec la catégorie jointe) en objet Expense.
+  Expense _expenseFromRow(Map<String, dynamic> row) {
+    final categoryData = row['categories'] as Map<String, dynamic>?;
+    final categoryName = categoryData?['name'] as String? ?? 'Autres';
+    final iconName = categoryData?['icon'] as String? ?? 'category';
+    final colorHex = categoryData?['color'] as String? ?? '#9E9E9E';
+    final color = colorFromHex(colorHex);
+
+    return Expense(
+      id: row['id'].toString(),
+      description: (row['description'] as String?) ?? '',
+      category: categoryName,
+      icon: iconFromName(iconName),
+      iconBackground: color.withValues(alpha: 0.15),
+      date: DateTime.parse(row['date'] as String),
+      amount: (row['amount'] as num).toDouble(),
+    );
+  }
+
   void _goToPreviousMonth() {
     setState(() {
       _displayedMonth = DateTime(_displayedMonth.year, _displayedMonth.month - 1);
     });
+    _loadData();
   }
 
   void _goToNextMonth() {
     setState(() {
       _displayedMonth = DateTime(_displayedMonth.year, _displayedMonth.month + 1);
     });
+    _loadData();
   }
 
-  // Filtre les dépenses : bon mois + bonne catégorie (si sélectionnée) + recherche texte
-  List<Expense> _filteredExpenses(AppState appState) {
-    return appState.expenses.where((e) {
-      final sameMonth = e.date.year == _displayedMonth.year && e.date.month == _displayedMonth.month;
-      final matchesCategory = _selectedCategory == 'Tout' || e.category == _selectedCategory;
-      final matchesSearch = _searchQuery.trim().isEmpty ||
-          e.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          e.category.toLowerCase().contains(_searchQuery.toLowerCase());
-      return sameMonth && matchesCategory && matchesSearch;
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+  void _onSearchChanged(String value) {
+    setState(() => _searchQuery = value);
+    _loadData();
+  }
+
+  void _onCategorySelected(String label) {
+    setState(() => _selectedCategory = label);
+    _loadData();
   }
 
   // Regroupe les dépenses par jour, avec un libellé "Aujourd'hui", "Hier" ou la date
   Map<String, List<Expense>> _groupByDay(List<Expense> expenses) {
     final Map<String, List<Expense>> grouped = {};
-    // NOTE PÉDAGOGIQUE : "aujourd'hui" est fixé à la fin du mois affiché pour
-    // coller à la maquette. Plus tard, on utilisera DateTime.now() une fois
-    // que les dépenses seront ajoutées en temps réel.
-    final referenceToday = DateTime(2026, 6, 30);
+    final today = DateTime.now();
+    final referenceToday = DateTime(today.year, today.month, today.day);
 
     for (final expense in expenses) {
       final dayOnly = DateTime(expense.date.year, expense.date.month, expense.date.day);
@@ -81,50 +207,51 @@ class _HistoriqueScreenState extends State<HistoriqueScreen> {
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
     final symbol = appState.selectedCurrency.symbol;
-    final filtered = _filteredExpenses(appState);
-    final grouped = _groupByDay(filtered);
-
-    final totalSpent = filtered.fold<double>(0, (sum, e) => sum + e.amount);
-    final revenue = appState.monthlyIncome;
-    final balance = revenue - totalSpent;
+    final grouped = _groupByDay(_expenses);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundlightColor,
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(appState, symbol, totalSpent, revenue, balance),
+            _buildHeader(symbol),
             const SizedBox(height: 16),
             _buildSearchField(),
             const SizedBox(height: 12),
-            _buildCategoryFilters(appState),
+            _buildCategoryFilters(),
             const SizedBox(height: 12),
             Expanded(
-              child: filtered.isEmpty
-                  ? const Center(child: Text('Aucune dépense pour ce mois.'))
-                  : ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      children: grouped.entries.expand((entry) {
-                        return [
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8, top: 4),
-                            child: Text(entry.key, style: HistoriqueStyles.dateSectionStyle),
-                          ),
-                          ...entry.value.map(
-                            (expense) => ExpenseTile(
-                              expense: expense,
-                              currencySymbol: symbol,
-                              onDetailTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ExpenseDetailScreen(expenseId: expense.id),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _expenses.isEmpty
+                      ? const Center(child: Text('Aucune dépense pour ce mois.'))
+                      : ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          children: grouped.entries.expand((entry) {
+                            return [
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8, top: 4),
+                                child: Text(entry.key, style: HistoriqueStyles.dateSectionStyle),
+                              ),
+                              ...entry.value.map(
+                                (expense) => ExpenseTile(
+                                  expense: expense,
+                                  currencySymbol: symbol,
+                                  onDetailTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ExpenseDetailScreen(expenseId: expense.id),
+                                      ),
+                                    );
+                                    // Recharge au retour (au cas où la dépense a été modifiée/supprimée)
+                                    _loadData();
+                                  },
                                 ),
                               ),
-                            ),
-                          ),
-                        ];
-                      }).toList(),
-                    ),
+                            ];
+                          }).toList(),
+                        ),
             ),
             const SizedBox(height: 12),
           ],
@@ -134,7 +261,7 @@ class _HistoriqueScreenState extends State<HistoriqueScreen> {
   }
 
   // ---- En-tête : image, titre, navigation par mois, 3 stat cards ----
-  Widget _buildHeader(AppState appState, String symbol, double totalSpent, double revenue, double balance) {
+  Widget _buildHeader(String symbol) {
     return ClipRRect(
       borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
       child: Container(
@@ -175,11 +302,11 @@ class _HistoriqueScreenState extends State<HistoriqueScreen> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: _statCard('DÉPENSES', '-${totalSpent.toStringAsFixed(2)} $symbol', AppColors.roseColor)),
+                      Expanded(child: _statCard('DÉPENSES', '-${_totalSpent.toStringAsFixed(2)} $symbol', AppColors.roseColor)),
                       const SizedBox(width: 8),
-                      Expanded(child: _statCard('REVENU', '+${revenue.toStringAsFixed(0)} $symbol', AppColors.greenColor)),
+                      Expanded(child: _statCard('REVENU', '+${_revenue.toStringAsFixed(0)} $symbol', AppColors.greenColor)),
                       const SizedBox(width: 8),
-                      Expanded(child: _statCard('SOLDE', '${balance.toStringAsFixed(2)} $symbol', AppColors.amberColor)),
+                      Expanded(child: _statCard('SOLDE', '${_balance.toStringAsFixed(2)} $symbol', AppColors.amberColor)),
                     ],
                   ),
                 ],
@@ -227,7 +354,7 @@ class _HistoriqueScreenState extends State<HistoriqueScreen> {
       child: Container(
         decoration: BoxDecoration(color: AppColors.cardBackgroundColor, borderRadius: BorderRadius.circular(16)),
         child: TextField(
-          onChanged: (value) => setState(() => _searchQuery = value),
+          onChanged: _onSearchChanged,
           decoration: const InputDecoration(
             hintText: 'Rechercher une dépense...',
             prefixIcon: Icon(Icons.search, color: AppColors.smalltextColor),
@@ -240,18 +367,18 @@ class _HistoriqueScreenState extends State<HistoriqueScreen> {
   }
 
   // ---- Chips de filtre par catégorie ----
-  Widget _buildCategoryFilters(AppState appState) {
-    final categories = ['Tout', ...appState.budgetCategories.map((c) => c.label)];
+  Widget _buildCategoryFilters() {
+    final labels = ['Tout', ..._categories.map((c) => c.name)];
 
     return SizedBox(
       height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: categories.length,
+        itemCount: labels.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final label = categories[index];
+          final label = labels[index];
           final isSelected = label == _selectedCategory;
           return ChoiceChip(
             label: Text(
@@ -264,7 +391,7 @@ class _HistoriqueScreenState extends State<HistoriqueScreen> {
             selectedColor: AppColors.darkmauveColor,
             backgroundColor: AppColors.cardBackgroundColor,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
-            onSelected: (_) => setState(() => _selectedCategory = label),
+            onSelected: (_) => _onCategorySelected(label),
           );
         },
       ),
