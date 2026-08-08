@@ -10,10 +10,32 @@ import 'widgets/recent_expense_tile.dart';
 /// Page d'accueil (Home).
 /// Reçoit [onSeeAllPressed], une fonction fournie par MainNavigationScreen,
 /// pour basculer vers l'onglet "Historique" quand on clique "Voir tout".
-class HomeScreen extends StatelessWidget {
+///
+/// StatefulWidget (au lieu de Stateless) uniquement pour déclencher le
+/// chargement des vraies données (appState.loadHomeData()) au premier
+/// affichage — comme pour Profil et Budgets.
+class HomeScreen extends StatefulWidget {
   final VoidCallback onSeeAllPressed;
 
   const HomeScreen({super.key, required this.onSeeAllPressed});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = AppStateScope.of(context);
+      if (appState.recentExpenses.isEmpty &&
+          appState.categoryBreakdown.isEmpty &&
+          !appState.isHomeLoading) {
+        appState.loadHomeData();
+      }
+    });
+  }
 
   // Transforme un nombre en texte lisible avec espace tous les 3 chiffres (ex: 2500 -> "2 500")
   String _formatAmount(double value) {
@@ -32,7 +54,7 @@ class HomeScreen extends StatelessWidget {
     // En lisant l'AppState ici, cette page se reconstruit automatiquement
     // dès que le nom, le revenu, ou la devise changent depuis la page Profil.
     final appState = AppStateScope.of(context);
-    final firstName = appState.userName.split(' ').first;
+    final firstName = appState.userName == '...' ? '...' : appState.userName.split(' ').first;
     final symbol = appState.selectedCurrency.symbol;
     final remaining = appState.monthlyIncome - appState.totalSpentThisMonth;
     final percentUsed = appState.monthlyIncome > 0
@@ -42,30 +64,50 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundlightColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context, appState, firstName, symbol),
-              const SizedBox(height: 20),
-              _buildIncomeCard(appState, symbol, remaining, percentUsed),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text('Répartition du mois', style: AppStyles.cardSectionTitleStyle),
+        child: appState.isHomeLoading && appState.categoryBreakdown.isEmpty && appState.recentExpenses.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(context, appState, firstName, symbol),
+                    const SizedBox(height: 20),
+                    _buildIncomeCard(appState, symbol, remaining, percentUsed),
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text('Répartition du mois', style: AppStyles.cardSectionTitleStyle),
+                    ),
+                    const SizedBox(height: 12),
+                    appState.categoryBreakdown.isEmpty
+                        ? _buildEmptyBreakdown()
+                        : CategoryBreakdownCard(
+                            categories: appState.categoryBreakdown,
+                            totalAmount: appState.totalSpentThisMonth,
+                            currencySymbol: symbol,
+                          ),
+                    const SizedBox(height: 24),
+                    _buildRecentExpensesCard(appState, symbol),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              CategoryBreakdownCard(
-                categories: appState.categoryBreakdown,
-                totalAmount: appState.totalSpentThisMonth,
-                currencySymbol: symbol,
-              ),
-              const SizedBox(height: 24),
-              _buildRecentExpensesCard(appState, symbol),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
+      ),
+    );
+  }
+
+  // Affiché quand aucune dépense n'a encore été ajoutée ce mois-ci.
+  Widget _buildEmptyBreakdown() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackgroundColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'Aucune dépense enregistrée ce mois-ci pour le moment.',
+        style: AppStyles.helperTextStyle,
       ),
     );
   }
@@ -88,15 +130,15 @@ class HomeScreen extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-  child: Opacity(
-    opacity: 0.7,
-    child: Image.asset(
-      'assets/home_icon.png',
-      fit: BoxFit.cover,
-      alignment: Alignment.topCenter,
-    ),
-  ),
-),
+              child: Opacity(
+                opacity: 0.7,
+                child: Image.asset(
+                  'assets/home_icon.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
               child: Column(
@@ -237,15 +279,21 @@ class HomeScreen extends StatelessWidget {
             children: [
               const Text('Dernières dépenses', style: AppStyles.cardSectionTitleStyle),
               GestureDetector(
-                onTap: onSeeAllPressed,
+                onTap: widget.onSeeAllPressed,
                 child: const Text('Voir tout', style: AppStyles.linkStyle),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          ...appState.recentExpenses.map(
-            (expense) => RecentExpenseTile(expense: expense, currencySymbol: symbol),
-          ),
+          if (appState.recentExpenses.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Aucune dépense pour le moment.', style: AppStyles.helperTextStyle),
+            )
+          else
+            ...appState.recentExpenses.map(
+              (expense) => RecentExpenseTile(expense: expense, currencySymbol: symbol),
+            ),
         ],
       ),
     );

@@ -8,12 +8,14 @@ import '../budget_styles.dart';
 class BudgetCategoryRow extends StatefulWidget {
   final BudgetCategory category;
   final double monthlyIncome;
+  final String currencySymbol;
   final ValueChanged<double> onChanged;
 
   const BudgetCategoryRow({
     super.key,
     required this.category,
     required this.monthlyIncome,
+    required this.currencySymbol,
     required this.onChanged,
   });
 
@@ -107,7 +109,7 @@ class _BudgetCategoryRowState extends State<BudgetCategoryRow> {
                       },
                     ),
                   ),
-                  const Text(' €', style: BudgetStyles.categoryLabelStyle),
+                  Text(' ${widget.currencySymbol}', style: BudgetStyles.categoryLabelStyle),
                 ],
               ),
             ),

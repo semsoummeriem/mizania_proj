@@ -122,6 +122,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                       .map((category) => BudgetCategoryRow(
                             category: category,
                             monthlyIncome: appState.monthlyIncome,
+                            currencySymbol: symbol,
                             onChanged: (value) {
                               setState(() {
                                 appState.updateBudgetAllocation(category.label, value);

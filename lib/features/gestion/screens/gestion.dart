@@ -9,6 +9,7 @@ import 'package:mizania_proj/core/widgets/custom_bottom_nav_bar.dart';
 import 'package:mizania_proj/core/services/supabase_client.dart';
 import 'package:mizania_proj/core/services/expense_service.dart';
 import 'package:mizania_proj/core/constants/icon_map.dart';
+import 'package:mizania_proj/core/state/app_state_scope.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class Gestion extends StatefulWidget {
@@ -107,6 +108,7 @@ class _GestionState extends State<Gestion> {
 
   @override
   Widget build(BuildContext context) {
+    final symbol = AppStateScope.of(context).selectedCurrency.symbol;
     return Scaffold(
       backgroundColor: AppColors.backgroundlightColor,
       body: AppBackground(
@@ -183,13 +185,13 @@ class _GestionState extends State<Gestion> {
                                       border: InputBorder.none,
                                       isDense: true,
                                       contentPadding: EdgeInsets.zero,
-                                      hintText: "0.00 €",
+                                      hintText: "0.00 $symbol",
                                       hintStyle: TextStyle(
                                         color: Colors.orange,
                                         fontSize: 32,
                                         fontWeight: FontWeight.bold,
                                       ),
-                                      suffixText: "€",
+                                      suffixText: symbol,
                                       suffixStyle: TextStyle(
                                         color: Colors.orange,
                                         fontSize: 32,

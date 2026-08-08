@@ -66,7 +66,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           // précisément si une dépense a été ajoutée.
           if (context.mounted) {
             final appState = AppStateScope.of(context);
-            await appState.loadBudgetCategories();
+            await appState.loadHomeData();
+            if (context.mounted) {
+              await appState.loadBudgetCategories();
+            }
             if (context.mounted) {
               await appState.loadProfile();
             }

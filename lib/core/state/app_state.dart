@@ -4,6 +4,14 @@ import '../constants/icon_map.dart';
 import '../../features/screens/profile/currency_model.dart';
 import '../services/profile_service.dart';
 import '../services/budget_service.dart';
+import '../services/home_service.dart';
+
+/// Noms des mois en français, utilisés pour afficher "Juin 2026" et les
+/// dates courtes des dépenses ("27 juin"), sans dépendre du package intl.
+const List<String> kFrenchMonthNames = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+];
 
 /// Une catégorie de dépense avec son montant (utilisée pour le donut chart de la Home).
 class CategoryAmount {
@@ -193,105 +201,75 @@ class AppState extends ChangeNotifier {
   }
 
   // ---- Données du mois affichées sur la Home ----
-  // TODO: ces valeurs viendront plus tard du vrai calcul des dépenses
-  // ajoutées par l'utilisateur (bouton "+"), au lieu d'être fixes.
-  String currentMonthLabel = 'Juin 2026';
-  double totalSpentThisMonth = 740;
+  final HomeService _homeService = HomeService();
+  bool isHomeLoading = false;
 
-  List<CategoryAmount> categoryBreakdown = [
-    CategoryAmount(label: 'Nourriture', amount: 310, color: AppColors.blueColor),
-    CategoryAmount(label: 'Transport', amount: 200, color: AppColors.tealColor),
-    CategoryAmount(label: 'Loisirs', amount: 120, color: AppColors.roseColor),
-    CategoryAmount(label: 'Logement', amount: 110, color: AppColors.amberColor),
-  ];
+  double totalSpentThisMonth = 0;
+  List<CategoryAmount> categoryBreakdown = [];
+  List<ExpenseItem> recentExpenses = [];
 
-  List<ExpenseItem> recentExpenses = [
-    ExpenseItem(
-      category: 'Nourriture',
-      date: '27 juin',
-      amount: 35,
-      icon: Icons.shopping_cart_outlined,
-      iconBackground: AppColors.blueLightColor,
-    ),
-    ExpenseItem(
-      category: 'Transport',
-      date: '25 juin',
-      amount: 12,
-      icon: Icons.directions_bus_outlined,
-      iconBackground: AppColors.greenLightColor,
-    ),
-    ExpenseItem(
-      category: 'Loisirs',
-      date: '20 juin',
-      amount: 10,
-      icon: Icons.movie_outlined,
-      iconBackground: AppColors.redLightColor,
-    ),
-  ];
+  /// "Juin 2026", calculé à partir du même mois que celui utilisé pour le
+  /// budget (currentBudgetMonthDate défini plus bas), pour que Home et
+  /// Budgets restent toujours sur le même mois.
+  String get currentMonthLabel {
+    final monthName = kFrenchMonthNames[currentBudgetMonthDate.month - 1];
+    final capitalized = monthName[0].toUpperCase() + monthName.substring(1);
+    return '$capitalized ${currentBudgetMonthDate.year}';
+  }
+
+  /// Charge le total dépensé, la répartition par catégorie, et les
+  /// dernières dépenses depuis Supabase. À appeler à l'ouverture de la Home.
+  Future<void> loadHomeData() async {
+    isHomeLoading = true;
+    notifyListeners();
+    try {
+      final breakdownData = await _homeService.getCategoryBreakdown(currentBudgetMonthDate);
+      final recentData = await _homeService.getRecentExpenses(limit: 3);
+
+      categoryBreakdown = breakdownData.map((row) {
+        return CategoryAmount(
+          label: row['name'] as String,
+          amount: (row['amount'] as num).toDouble(),
+          color: _hexToColor((row['color'] as String?) ?? '#8B5E34'),
+        );
+      }).toList()
+        ..sort((a, b) => b.amount.compareTo(a.amount));
+
+      totalSpentThisMonth = categoryBreakdown.fold(0, (sum, c) => sum + c.amount);
+
+      recentExpenses = recentData.map((row) {
+        final category = row['categories'] as Map<String, dynamic>?;
+        final date = DateTime.parse(row['date'] as String);
+        final color = _hexToColor((category?['color'] as String?) ?? '#8B5E34');
+        return ExpenseItem(
+          category: (category?['name'] as String?) ?? 'Autres',
+          date: _formatShortDate(date),
+          amount: (row['amount'] as num?)?.toDouble() ?? 0,
+          icon: iconname((category?['icon'] as String?) ?? 'category'),
+          iconBackground: color.withValues(alpha: 0.15),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('Erreur lors du chargement de la Home : $e');
+    } finally {
+      isHomeLoading = false;
+      notifyListeners();
+    }
+  }
+
+  String _formatShortDate(DateTime date) {
+    return '${date.day} ${kFrenchMonthNames[date.month - 1]}';
+  }
 
   // ---- Notifications ----
-  List<AppNotification> notifications = [
-    AppNotification(
-      title: 'Budget Loisirs dépassé',
-      message: 'Tu as dépensé 230 € sur 200 € prévus ce mois-ci.',
-      time: 'Il y a 12 min',
-      icon: Icons.warning_amber_rounded,
-      iconBackground: AppColors.redLightColor,
-      iconColor: AppColors.redColor,
-    ),
-    AppNotification(
-      title: 'Prédiction du mois',
-      message: 'À ce rythme, tu vas dépenser ~1 820 € en juillet. Sous ton revenu.',
-      time: 'Il y a 2 h',
-      icon: Icons.trending_up,
-      iconBackground: AppColors.orangeLightColor,
-      iconColor: AppColors.amberColor,
-    ),
-    AppNotification(
-      title: 'Nourriture en hausse',
-      message: 'Tes dépenses Nourriture sont 28 % plus élevées qu\'en mai.',
-      time: 'Il y a 5 h',
-      icon: Icons.trending_down,
-      iconBackground: AppColors.orangeLightColor,
-      iconColor: AppColors.amberColor,
-    ),
-    AppNotification(
-      title: 'Budget Transport respecté',
-      message: 'Tu es à 110 sur 150 € prévus. Bonne maîtrise ce mois-ci.',
-      time: 'Hier, 09:15',
-      icon: Icons.check,
-      iconBackground: AppColors.greenLightColor,
-      iconColor: AppColors.greenColor,
-      isRead: true,
-    ),
-    AppNotification(
-      title: 'Revenu du mois reçu',
-      message: 'Un revenu de 2 000 € a été enregistré pour juin 2026.',
-      time: '27 juin, 08:00',
-      icon: Icons.attach_money,
-      iconBackground: AppColors.purpleLightColor,
-      iconColor: AppColors.darkmauveColor,
-      isRead: true,
-    ),
-    AppNotification(
-      title: 'Budget Santé à 90 %',
-      message: 'Il te reste seulement 10 € sur ton budget Santé de ce mois.',
-      time: '26 juin, 14:30',
-      icon: Icons.error_outline,
-      iconBackground: AppColors.redLightColor,
-      iconColor: AppColors.redColor,
-      isRead: true,
-    ),
-    AppNotification(
-      title: 'Récap de mi-mois',
-      message: 'Tu as dépensé 820 € en 15 jours, soit 41 % de ton revenu.',
-      time: '25 juin, 20:00',
-      icon: Icons.calendar_today_outlined,
-      iconBackground: AppColors.blueLightColor,
-      iconColor: AppColors.blueColor,
-      isRead: true,
-    ),
-  ];
+  // Ancienne liste fixe (7 notifications d'exemple avec du texte figé en
+  // euros) supprimée. Les seules notifications générées pour l'instant
+  // sont les alertes de dépassement de budget, créées automatiquement par
+  // _checkOverspendNotifications() (voir plus bas, appelée après chaque
+  // loadBudgetCategories()). Les autres types (prédiction du mois,
+  // tendance par catégorie, etc.) pourront être ajoutés plus tard, une
+  // fois ces calculs faits côté backend.
+  List<AppNotification> notifications = [];
 
   int get unreadNotificationsCount => notifications.where((n) => !n.isRead).length;
 
@@ -407,30 +385,51 @@ class AppState extends ChangeNotifier {
     await _budgetService.saveBudget(currentBudgetMonthDate, allocations);
   }
 
-  /// Ajoute une notification (dans la liste affichée sur la page
-  /// Notifications) pour chaque catégorie qui dépasse son budget, en
-  /// évitant les doublons si la notification existe déjà.
+  /// Synchronise les notifications de dépassement de budget avec l'état
+  /// réel actuel :
+  /// - une catégorie en dépassement sans alerte existante → on en crée une
+  /// - une catégorie en dépassement avec une alerte déjà présente → on met
+  ///   à jour son montant (au cas où de nouvelles dépenses sont arrivées),
+  ///   sans changer si elle a déjà été lue ou non
+  /// - une catégorie qui n'est plus en dépassement (budget augmenté,
+  ///   dépense supprimée...) → on retire l'alerte devenue obsolète
   void _checkOverspendNotifications() {
     for (final category in budgetCategories) {
-      if (!category.isOverBudget) continue;
-
       final title = 'Budget ${category.label} dépassé';
-      final alreadyNotified = notifications.any((n) => n.title == title);
-      if (alreadyNotified) continue;
+      final existingIndex = notifications.indexWhere((n) => n.title == title);
 
-      notifications.insert(
-        0,
-        AppNotification(
-          title: title,
-          message:
-              'Tu as dépensé ${category.spent.toStringAsFixed(0)} ${selectedCurrency.symbol} '
-              'sur ${category.allocated.toStringAsFixed(0)} ${selectedCurrency.symbol} prévus ce mois-ci.',
-          time: 'À l\'instant',
-          icon: Icons.warning_amber_rounded,
-          iconBackground: AppColors.redLightColor,
-          iconColor: AppColors.redColor,
-        ),
-      );
+      if (category.isOverBudget) {
+        final message =
+            'Tu as dépensé ${category.spent.toStringAsFixed(0)} ${selectedCurrency.symbol} '
+            'sur ${category.allocated.toStringAsFixed(0)} ${selectedCurrency.symbol} prévus ce mois-ci.';
+
+        if (existingIndex == -1) {
+          notifications.insert(
+            0,
+            AppNotification(
+              title: title,
+              message: message,
+              time: 'À l\'instant',
+              icon: Icons.warning_amber_rounded,
+              iconBackground: AppColors.redLightColor,
+              iconColor: AppColors.redColor,
+            ),
+          );
+        } else {
+          final existing = notifications[existingIndex];
+          notifications[existingIndex] = AppNotification(
+            title: title,
+            message: message,
+            time: existing.time,
+            icon: existing.icon,
+            iconBackground: existing.iconBackground,
+            iconColor: existing.iconColor,
+            isRead: existing.isRead,
+          );
+        }
+      } else if (existingIndex != -1) {
+        notifications.removeAt(existingIndex);
+      }
     }
   }
 
