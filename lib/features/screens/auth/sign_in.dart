@@ -8,6 +8,8 @@ import '../../../core/widgets/input_fields.dart';
 import '../../../core/widgets/button.dart';
 import 'package:mizania_proj/core/services/supabase_client.dart';
 import 'package:mizania_proj/features/screens/main_navigation_screen.dart';
+import "package:mizania_proj/features/screens/auth/login.dart";
+import 'package:mizania_proj/core/widgets/google_signin_button.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -146,6 +148,32 @@ class _SignInState extends State<SignIn> {
                     },
                   ),
                   SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Vous avez déjà un compte?',
+                        style: AppStyles.smalltextstyle,
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Hroutes to login page
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const Login(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Se connecter',
+                          style: AppStyles.LinkbuttonTextStyle,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  const SigninGoogleButton(),
                 ],
               ),
             ),
