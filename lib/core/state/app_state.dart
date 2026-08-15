@@ -5,6 +5,7 @@ import '../../features/screens/profile/currency_model.dart';
 import '../services/profile_service.dart';
 import '../services/budget_service.dart';
 import '../services/home_service.dart';
+import '../services/notification_service.dart';
 
 /// Noms des mois en français, utilisés pour afficher "Juin 2026" et les
 /// dates courtes des dépenses ("27 juin"), sans dépendre du package intl.
@@ -91,6 +92,7 @@ class BudgetCategory {
 
 /// Une notification affichée sur la page Notifications.
 class AppNotification {
+  final int? id; // id Supabase, null pour les notifications pas encore synchronisées
   final String title;
   final String message;
   final String time;
@@ -100,6 +102,7 @@ class AppNotification {
   final bool isRead;
 
   const AppNotification({
+    this.id,
     required this.title,
     required this.message,
     required this.time,
@@ -111,6 +114,7 @@ class AppNotification {
 
   AppNotification copyWith({bool? isRead}) {
     return AppNotification(
+      id: id,
       title: title,
       message: message,
       time: time,
@@ -262,16 +266,71 @@ class AppState extends ChangeNotifier {
   }
 
   // ---- Notifications ----
-  // Ancienne liste fixe (7 notifications d'exemple avec du texte figé en
-  // euros) supprimée. Les seules notifications générées pour l'instant
-  // sont les alertes de dépassement de budget, créées automatiquement par
-  // _checkOverspendNotifications() (voir plus bas, appelée après chaque
-  // loadBudgetCategories()). Les autres types (prédiction du mois,
-  // tendance par catégorie, etc.) pourront être ajoutés plus tard, une
-  // fois ces calculs faits côté backend.
+  // Les notifications sont maintenant persistées dans Supabase (table
+  // `notifications`), au lieu de vivre uniquement en mémoire.
+  final NotificationService _notificationService = NotificationService();
   List<AppNotification> notifications = [];
 
   int get unreadNotificationsCount => notifications.where((n) => !n.isRead).length;
+
+  IconData _iconForNotificationType(String type) {
+    switch (type) {
+      case 'budget_overspend':
+        return Icons.warning_amber_rounded;
+      default:
+        return Icons.notifications_none;
+    }
+  }
+
+  Color _iconBackgroundForNotificationType(String type) {
+    switch (type) {
+      case 'budget_overspend':
+        return AppColors.redLightColor;
+      default:
+        return AppColors.purpleLightColor;
+    }
+  }
+
+  Color _iconColorForNotificationType(String type) {
+    switch (type) {
+      case 'budget_overspend':
+        return AppColors.redColor;
+      default:
+        return AppColors.darkmauveColor;
+    }
+  }
+
+  String _formatNotificationTime(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'À l\'instant';
+    if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'Il y a ${diff.inHours} h';
+    if (diff.inDays == 1) return 'Hier';
+    return _formatShortDate(date);
+  }
+
+  /// Recharge la liste des notifications depuis Supabase.
+  Future<void> loadNotifications() async {
+    try {
+      final rows = await _notificationService.getNotifications();
+      notifications = rows.map((row) {
+        final type = row['type'] as String? ?? 'budget_overspend';
+        return AppNotification(
+          id: row['id'] as int,
+          title: row['title'] as String,
+          message: row['message'] as String,
+          time: _formatNotificationTime(DateTime.parse(row['created_at'] as String)),
+          icon: _iconForNotificationType(type),
+          iconBackground: _iconBackgroundForNotificationType(type),
+          iconColor: _iconColorForNotificationType(type),
+          isRead: row['is_read'] as bool? ?? false,
+        );
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erreur lors du chargement des notifications : $e');
+    }
+  }
 
   // ---- Dépenses réelles (page Historique + Détail d'une dépense) ----
   // TODO: remplacer par les vraies dépenses ajoutées via le bouton "+" une fois cette page créée.
@@ -366,7 +425,7 @@ class AppState extends ChangeNotifier {
         );
       }).toList();
 
-      _checkOverspendNotifications();
+      await _syncOverspendNotifications();
     } catch (e) {
       debugPrint('Erreur lors du chargement du budget : $e');
     } finally {
@@ -385,52 +444,42 @@ class AppState extends ChangeNotifier {
     await _budgetService.saveBudget(currentBudgetMonthDate, allocations);
   }
 
-  /// Synchronise les notifications de dépassement de budget avec l'état
-  /// réel actuel :
-  /// - une catégorie en dépassement sans alerte existante → on en crée une
-  /// - une catégorie en dépassement avec une alerte déjà présente → on met
-  ///   à jour son montant (au cas où de nouvelles dépenses sont arrivées),
-  ///   sans changer si elle a déjà été lue ou non
-  /// - une catégorie qui n'est plus en dépassement (budget augmenté,
-  ///   dépense supprimée...) → on retire l'alerte devenue obsolète
-  void _checkOverspendNotifications() {
+  /// Synchronise les alertes de dépassement de budget avec Supabase :
+  /// - une catégorie en dépassement → on crée/met à jour son alerte en base
+  ///   (le statut lu/non-lu existant n'est jamais écrasé, voir
+  ///   NotificationService.upsertBudgetOverspendNotification)
+  /// - une catégorie qui n'est plus en dépassement → on supprime son alerte
+  /// Puis on recharge la liste complète depuis Supabase pour que l'affichage
+  /// reflète exactement ce qui est en base (ids, statut lu/non-lu...).
+  Future<void> _syncOverspendNotifications() async {
     for (final category in budgetCategories) {
-      final title = 'Budget ${category.label} dépassé';
-      final existingIndex = notifications.indexWhere((n) => n.title == title);
+      if (category.categoryId == null) continue;
 
-      if (category.isOverBudget) {
-        final message =
-            'Tu as dépensé ${category.spent.toStringAsFixed(0)} ${selectedCurrency.symbol} '
-            'sur ${category.allocated.toStringAsFixed(0)} ${selectedCurrency.symbol} prévus ce mois-ci.';
+      try {
+        if (category.isOverBudget) {
+          final title = 'Budget ${category.label} dépassé';
+          final message =
+              'Tu as dépensé ${category.spent.toStringAsFixed(0)} ${selectedCurrency.symbol} '
+              'sur ${category.allocated.toStringAsFixed(0)} ${selectedCurrency.symbol} prévus ce mois-ci.';
 
-        if (existingIndex == -1) {
-          notifications.insert(
-            0,
-            AppNotification(
-              title: title,
-              message: message,
-              time: 'À l\'instant',
-              icon: Icons.warning_amber_rounded,
-              iconBackground: AppColors.redLightColor,
-              iconColor: AppColors.redColor,
-            ),
-          );
-        } else {
-          final existing = notifications[existingIndex];
-          notifications[existingIndex] = AppNotification(
+          await _notificationService.upsertBudgetOverspendNotification(
+            categoryId: category.categoryId!,
+            month: currentBudgetMonthDate,
             title: title,
             message: message,
-            time: existing.time,
-            icon: existing.icon,
-            iconBackground: existing.iconBackground,
-            iconColor: existing.iconColor,
-            isRead: existing.isRead,
+          );
+        } else {
+          await _notificationService.deleteBudgetOverspendNotification(
+            categoryId: category.categoryId!,
+            month: currentBudgetMonthDate,
           );
         }
-      } else if (existingIndex != -1) {
-        notifications.removeAt(existingIndex);
+      } catch (e) {
+        debugPrint('Erreur de synchronisation de la notification (${category.label}) : $e');
       }
     }
+
+    await loadNotifications();
   }
 
   double get totalAllocated => budgetCategories.fold(0, (sum, c) => sum + c.allocated);
@@ -522,14 +571,30 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void markAllNotificationsRead() {
+  Future<void> markAllNotificationsRead() async {
+    final previous = List<AppNotification>.from(notifications);
     notifications = notifications.map((n) => n.copyWith(isRead: true)).toList();
     notifyListeners();
+    try {
+      await _notificationService.markAllAsRead();
+    } catch (e) {
+      notifications = previous;
+      notifyListeners();
+    }
   }
 
-  void markNotificationRead(int index) {
-    notifications[index] = notifications[index].copyWith(isRead: true);
+  Future<void> markNotificationRead(int index) async {
+    final notification = notifications[index];
+    if (notification.isRead || notification.id == null) return;
+
+    notifications[index] = notification.copyWith(isRead: true);
     notifyListeners();
+    try {
+      await _notificationService.markAsRead(notification.id!);
+    } catch (e) {
+      notifications[index] = notification;
+      notifyListeners();
+    }
   }
 
   // ---- Gestion des dépenses ----
