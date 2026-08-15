@@ -10,6 +10,7 @@ import 'package:mizania_proj/features/screens/main_navigation_screen.dart';
 import 'forgot_password.dart';
 import 'package:mizania_proj/core/services/supabase_client.dart';
 import '../../../core/state/app_state_scope.dart';
+import 'package:mizania_proj/core/widgets/google_signin_button.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -113,16 +114,17 @@ class _LoginState extends State<Login> {
                           password: password,
                         );
                         if (response.user != null) {
-  await AppStateScope.of(context).loadProfile();
-  if (context.mounted) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const MainNavigationScreen(),
-      ),
-    );
-  }
-}
+                          await AppStateScope.of(context).loadProfile();
+                          if (context.mounted) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const MainNavigationScreen(),
+                              ),
+                            );
+                          }
+                        }
                       } on AuthException catch (e) {
                         ScaffoldMessenger.of(
                           context,
@@ -159,6 +161,8 @@ class _LoginState extends State<Login> {
                       ),
                     ],
                   ),
+                  SizedBox(height: 16),
+                  const SigninGoogleButton(),
                 ],
               ),
             ),
