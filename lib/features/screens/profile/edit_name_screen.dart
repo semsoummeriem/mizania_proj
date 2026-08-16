@@ -44,7 +44,7 @@ class _EditNameScreenState extends State<EditNameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

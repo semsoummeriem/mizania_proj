@@ -24,7 +24,7 @@ class NotificationsScreen extends StatelessWidget {
     final weekNotifications = notifications.skip(3).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

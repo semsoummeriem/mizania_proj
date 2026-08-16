@@ -110,7 +110,7 @@ class _GestionState extends State<Gestion> {
   Widget build(BuildContext context) {
     final symbol = AppStateScope.of(context).selectedCurrency.symbol;
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: AppBackground(
         child: SingleChildScrollView(
           child: Column(

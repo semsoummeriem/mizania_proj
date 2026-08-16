@@ -30,7 +30,7 @@ class _NewPasswordState extends State<NewPassword> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: AppBackground(
         child: SafeArea(
           child: Padding(

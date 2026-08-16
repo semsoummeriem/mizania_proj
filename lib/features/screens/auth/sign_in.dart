@@ -38,7 +38,7 @@ class _SignInState extends State<SignIn> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("S'inscrire")),
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: AppBackground(
         child: SingleChildScrollView(
           physics: ClampingScrollPhysics(),

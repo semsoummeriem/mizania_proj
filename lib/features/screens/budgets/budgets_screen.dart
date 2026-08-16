@@ -23,12 +23,18 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
   // "Équilibré" correspond aux valeurs par défaut déjà dans AppState.
   // "Logement" retiré : cette catégorie n'existe plus dans Supabase.
   static const Map<String, double> _balancedPreset = {
-    'Nourriture': 400, 'Transport': 150,
-    'Loisirs': 200, 'Santé': 100, 'Autres': 120,
+    'Nourriture': 400,
+    'Transport': 150,
+    'Loisirs': 200,
+    'Santé': 100,
+    'Autres': 120,
   };
   static const Map<String, double> _economPreset = {
-    'Nourriture': 300, 'Transport': 100,
-    'Loisirs': 100, 'Santé': 100, 'Autres': 50,
+    'Nourriture': 300,
+    'Transport': 100,
+    'Loisirs': 100,
+    'Santé': 100,
+    'Autres': 50,
   };
 
   @override
@@ -67,7 +73,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de l\'enregistrement : ${e.toString().replaceFirst('Exception: ', '')}'),
+            content: Text(
+              'Erreur lors de l\'enregistrement : ${e.toString().replaceFirst('Exception: ', '')}',
+            ),
             backgroundColor: AppColors.redColor,
           ),
         );
@@ -88,14 +96,14 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
         : 0.0;
 
     if (appState.isBudgetLoading && appState.budgetCategories.isEmpty) {
-      return const Scaffold(
-        backgroundColor: AppColors.backgroundlightColor,
+      return Scaffold(
+        backgroundColor: AppColors.scaffoldBg(context),
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -105,36 +113,53 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text('RÉPARTITION SUGGÉRÉE', style: BudgetStyles.sectionTitleStyle),
+                child: Text(
+                  'RÉPARTITION SUGGÉRÉE',
+                  style: BudgetStyles.sectionTitleStyle,
+                ),
               ),
               const SizedBox(height: 12),
               _buildPresets(appState),
               const SizedBox(height: 24),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text('BUDGET PAR CATÉGORIE', style: BudgetStyles.sectionTitleStyle),
+                child: Text(
+                  'BUDGET PAR CATÉGORIE',
+                  style: BudgetStyles.sectionTitleStyle,
+                ),
               ),
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: appState.budgetCategories
-                      .map((category) => BudgetCategoryRow(
-                            category: category,
-                            monthlyIncome: appState.monthlyIncome,
-                            currencySymbol: symbol,
-                            onChanged: (value) {
-                              setState(() {
-                                appState.updateBudgetAllocation(category.label, value);
-                                _selectedPreset = 'Personnalisé';
-                              });
-                            },
-                          ))
+                      .map(
+                        (category) => BudgetCategoryRow(
+                          category: category,
+                          monthlyIncome: appState.monthlyIncome,
+                          currencySymbol: symbol,
+                          onChanged: (value) {
+                            setState(() {
+                              appState.updateBudgetAllocation(
+                                category.label,
+                                value,
+                              );
+                              _selectedPreset = 'Personnalisé';
+                            });
+                          },
+                        ),
+                      )
                       .toList(),
                 ),
               ),
               const SizedBox(height: 8),
-              _buildTotalSummary(appState, symbol, totalAllocated, unallocated, progress),
+              _buildTotalSummary(
+                appState,
+                symbol,
+                totalAllocated,
+                unallocated,
+                progress,
+              ),
               const SizedBox(height: 20),
               _buildSaveButton(appState),
               const SizedBox(height: 20),
@@ -148,10 +173,13 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
   // ---- En-tête : image + carte revenu / non alloué ----
   Widget _buildHeader(AppState appState, String symbol, double unallocated) {
     return ClipRRect(
-      borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(28),
+        bottomRight: Radius.circular(28),
+      ),
       child: Container(
         width: double.infinity,
-        color: AppColors.backgroundlightColor,
+        color: AppColors.scaffoldBg(context),
         child: Stack(
           children: [
             Positioned.fill(
@@ -161,7 +189,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                   'assets/budget_icon.png',
                   fit: BoxFit.cover,
                   alignment: Alignment.topCenter,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox(),
                 ),
               ),
             ),
@@ -170,7 +199,10 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Text('Définir mon budget', style: BudgetStyles.headerTitleStyle),
+                  const Text(
+                    'Définir mon budget',
+                    style: BudgetStyles.headerTitleStyle,
+                  ),
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
@@ -185,21 +217,33 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('REVENU MENSUEL', style: BudgetStyles.incomeLabelStyle),
+                            const Text(
+                              'REVENU MENSUEL',
+                              style: BudgetStyles.incomeLabelStyle,
+                            ),
                             const SizedBox(height: 4),
-                            Text('${appState.monthlyIncome.toStringAsFixed(0)} $symbol', style: BudgetStyles.incomeAmountStyle),
+                            Text(
+                              '${appState.monthlyIncome.toStringAsFixed(0)} $symbol',
+                              style: BudgetStyles.incomeAmountStyle,
+                            ),
                           ],
                         ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            const Text('Non alloué', style: BudgetStyles.unallocatedLabelStyle),
+                            const Text(
+                              'Non alloué',
+                              style: BudgetStyles.unallocatedLabelStyle,
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               '${unallocated >= 0 ? '+' : ''}${unallocated.toStringAsFixed(0)} $symbol',
-                              style: BudgetStyles.unallocatedAmountStyle.copyWith(
-                                color: unallocated >= 0 ? AppColors.greenColor : AppColors.roseColor,
-                              ),
+                              style: BudgetStyles.unallocatedAmountStyle
+                                  .copyWith(
+                                    color: unallocated >= 0
+                                        ? AppColors.greenColor
+                                        : AppColors.roseColor,
+                                  ),
                             ),
                           ],
                         ),
@@ -235,12 +279,17 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               child: GestureDetector(
                 onTap: () => _applyPreset(label, appState),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.cardBackgroundColor,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isSelected ? AppColors.darkmauveColor : AppColors.dividerColor,
+                      color: isSelected
+                          ? AppColors.darkmauveColor
+                          : AppColors.dividerColor,
                       width: isSelected ? 1.5 : 1,
                     ),
                   ),
@@ -249,7 +298,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                       Text(
                         preset['title']!,
                         style: BudgetStyles.presetTitleStyle.copyWith(
-                          color: isSelected ? AppColors.darkmauveColor : AppColors.bigtextColor,
+                          color: isSelected
+                              ? AppColors.darkmauveColor
+                              : AppColors.bigtextColor,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -266,11 +317,20 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
   }
 
   // ---- Résumé total alloué + barre de progression ----
-  Widget _buildTotalSummary(AppState appState, String symbol, double totalAllocated, double unallocated, double progress) {
+  Widget _buildTotalSummary(
+    AppState appState,
+    String symbol,
+    double totalAllocated,
+    double unallocated,
+    double progress,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.cardBackgroundColor, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackgroundColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -319,15 +379,23 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               ? const SizedBox(
                   height: 18,
                   width: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.whiteColor),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.whiteColor,
+                  ),
                 )
               : const Icon(Icons.check, color: AppColors.whiteColor),
-          label: Text(_isSaving ? 'Enregistrement...' : 'Enregistrer le budget', style: BudgetStyles.saveButtonStyle),
+          label: Text(
+            _isSaving ? 'Enregistrement...' : 'Enregistrer le budget',
+            style: BudgetStyles.saveButtonStyle,
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.darkmauveColor,
             elevation: 0,
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         ),
       ),

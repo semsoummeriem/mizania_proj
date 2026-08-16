@@ -73,7 +73,7 @@ class _EditIncomeScreenState extends State<EditIncomeScreen> {
     final income = _enteredIncome;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

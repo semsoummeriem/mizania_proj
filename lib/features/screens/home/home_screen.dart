@@ -62,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
         : 0.0;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: SafeArea(
         child: appState.isHomeLoading && appState.categoryBreakdown.isEmpty && appState.recentExpenses.isEmpty
             ? const Center(child: CircularProgressIndicator())

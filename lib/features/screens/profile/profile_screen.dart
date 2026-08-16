@@ -63,7 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final appState = AppStateScope.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: SafeArea(
         child: appState.isProfileLoading && appState.userName == '...'
             ? const Center(child: CircularProgressIndicator())

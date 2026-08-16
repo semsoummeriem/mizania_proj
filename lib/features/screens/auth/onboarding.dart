@@ -4,6 +4,7 @@ import '../profile/widgets/AppBackground.dart';
 import 'dart:async';
 import '../../../core/constants/colors.dart';
 import 'package:mizania_proj/features/screens/auth/login.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Onboarding extends StatefulWidget {
   const Onboarding({super.key});
@@ -15,40 +16,9 @@ class Onboarding extends StatefulWidget {
 class _OnboardingState extends State<Onboarding> {
   late PageController _pageController;
   late Timer _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    // Start a timer to navigate to the next screen after 7 seconds
-    _pageController = PageController(initialPage: 0, viewportFraction: 1.0);
-    _timer = Timer.periodic(Duration(seconds: 3), (Timer timer) {
-      if (_pageController.hasClients) {
-        int nextPage = _pageController.page!.toInt() + 1;
-        if (nextPage >= onboardingData.length) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => Login()),
-          ); // goes to login page after the last onboarding screen
-          return;
-        }
-        _pageController.animateToPage(
-          nextPage,
-          duration: Duration(milliseconds: 500),
-          curve: Curves.easeInOutCubic,
-        );
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel(); // Cancel the timer when the widget is disposed
-    _pageController.dispose();
-    super.dispose();
-  }
-
   int currentIndex = 0;
-  List<Map<String, String>> onboardingData = [
+
+  final List<Map<String, String>> onboardingData = [
     {
       'image': 'assets/1st.png',
       'title': 'Suis tes dépenses',
@@ -66,27 +36,66 @@ class _OnboardingState extends State<Onboarding> {
       'description': 'Reçoit des alertes avant de dépasser ton budget',
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: 0, viewportFraction: 1.0);
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!mounted) return;
+      if (_pageController.hasClients) {
+        int nextPage = _pageController.page!.toInt() + 1;
+        if (nextPage >= onboardingData.length) {
+          _finishOnboarding();
+          return;
+        }
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+    });
+  }
+
+  Future<void> _finishOnboarding() async {
+    _timer.cancel();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_seen', true);
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const Login()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.scaffoldBg(context),
       body: PageView.builder(
-        physics: ClampingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         controller: _pageController,
         onPageChanged: (index) {
-          // Handle page change if needed
-          setState(() {
-            // Update state if necessary
-            currentIndex = index;
-          });
+          setState(() => currentIndex = index);
         },
         itemCount: onboardingData.length,
         itemBuilder: (context, index) {
           return AppBackground(
             child: SafeArea(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 24,
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Center(
@@ -96,7 +105,7 @@ class _OnboardingState extends State<Onboarding> {
                         height: 150,
                       ),
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 24),
                     Center(
                       child: Text(
                         onboardingData[index]['title']!,
@@ -104,7 +113,7 @@ class _OnboardingState extends State<Onboarding> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     Center(
                       child: Text(
                         onboardingData[index]['description']!,
@@ -112,14 +121,16 @@ class _OnboardingState extends State<Onboarding> {
                         textAlign: TextAlign.center,
                       ),
                     ),
+                    const SizedBox(height: 24),
+                    // dots
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(onboardingData.length, (
                         dotIndex,
                       ) {
                         return AnimatedContainer(
-                          duration: Duration(milliseconds: 300),
-                          margin: EdgeInsets.symmetric(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(
                             horizontal: 4,
                             vertical: 24,
                           ),
@@ -129,11 +140,53 @@ class _OnboardingState extends State<Onboarding> {
                             color: currentIndex == dotIndex
                                 ? AppColors.dotColor
                                 : AppColors.smalltextColor,
-                            //borderRadius: BorderRadius.circular(4),
                             shape: BoxShape.circle,
                           ),
                         );
                       }),
+                    ),
+                    const SizedBox(height: 16),
+                    // buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: _finishOnboarding,
+                          child: Text(
+                            'Passer',
+                            style: TextStyle(color: AppColors.smalltextColor),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            if (currentIndex < onboardingData.length - 1) {
+                              _pageController.animateToPage(
+                                currentIndex + 1,
+                                duration: const Duration(milliseconds: 500),
+                                curve: Curves.easeInOutCubic,
+                              );
+                            } else {
+                              _finishOnboarding();
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.dotColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: Text(
+                            currentIndex == onboardingData.length - 1
+                                ? 'Commencer'
+                                : 'Suivant',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

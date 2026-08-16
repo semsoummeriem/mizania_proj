@@ -38,6 +38,7 @@ class CategoryAmount {
   });
 }
 
+
 /// Une dépense récente affichée dans la liste "Dernières dépenses".
 class ExpenseItem {
   final String category;

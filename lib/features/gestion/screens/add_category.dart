@@ -58,6 +58,7 @@ class _AddCategoryState extends State<AddCategory> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.scaffoldBg(context),
       appBar: AppBar(
         backgroundColor: AppColors.darkmauveColor,
         title: Text('Ajouter une catégory'),

@@ -5,6 +5,10 @@ import '../../../core/widgets/dot.dart';
 import 'dart:ui';
 import 'dart:async';
 import 'package:mizania_proj/features/screens/auth/onboarding.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mizania_proj/core/services/supabase_client.dart';
+import 'package:mizania_proj/features/screens/main_navigation_screen.dart';
+import 'package:mizania_proj/features/screens/auth/login.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,19 +23,41 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-
-    _timer = Timer(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const Onboarding()),
-      );
+    _timer = Timer(const Duration(seconds: 3), () async {
+      if (!mounted) return;
+      final prefs = await SharedPreferences.getInstance();
+      final seen = prefs.getBool('onboarding_seen') ?? false;
+      final session = supabase.auth.currentSession;
+      if (!mounted) return;
+      if (!seen) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Onboarding()),
+        );
+      } else if (session != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Login()),
+        );
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: Stack(
         children: [
           Positioned(
@@ -76,7 +102,6 @@ class _SplashScreenState extends State<SplashScreen> {
                     width: 200,
                     height: 10,
                     child: LinearProgressIndicator(
-                      // strokeWidth: 6,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         AppColors.dotColor,
                       ),

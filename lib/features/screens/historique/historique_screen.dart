@@ -210,7 +210,7 @@ class _HistoriqueScreenState extends State<HistoriqueScreen> {
     final grouped = _groupByDay(_expenses);
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundlightColor,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: SafeArea(
         child: Column(
           children: [
