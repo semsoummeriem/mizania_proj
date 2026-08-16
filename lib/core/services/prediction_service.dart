@@ -1,4 +1,3 @@
-// lib/core/services/prediction_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mizania_proj/core/services/supabase_client.dart';
@@ -6,50 +5,8 @@ import 'package:mizania_proj/core/services/supabase_client.dart';
 class PredictionService {
   static const String _baseUrl = 'https://mizania-proj.onrender.com';
 
-  Future<void> checkAndSavePredictionNotification() async {
-    final userId = supabase.auth.currentUser!.id;
-    final prediction = await getPrediction();
-
-    const title = 'Prédiction du mois';
-
-    // check if a prediction notification already exists for this user
-    final existing = await supabase
-        .from('notifications')
-        .select()
-        .eq('user_id', userId)
-        .eq('type', 'prediction')
-        .maybeSingle();
-
-    if (prediction['prediction_available'] != true) {
-      if (existing != null) {
-        await supabase.from('notifications').delete().eq('id', existing['id']);
-      }
-      return;
-    }
-
-    final amount = prediction['predicted_amount'];
-    final message =
-        'Vous allez probablement dépenser environ ${amount.toStringAsFixed(0)} ce mois-ci.';
-
-    if (existing == null) {
-      await supabase.from('notifications').insert({
-        'user_id': userId,
-        'title': title,
-        'message': message,
-        'type': 'prediction',
-        'is_read': false,
-      });
-    } else {
-      await supabase
-          .from('notifications')
-          .update({'message': message})
-          .eq('id', existing['id']);
-    }
-  }
-
   Future<double> _getLastMonthTotal() async {
     final userId = supabase.auth.currentUser!.id;
-
     final now = DateTime.now();
     final firstDayOfThisMonth = DateTime(now.year, now.month, 1);
     final firstDayOfLastMonth = DateTime(now.year, now.month - 1, 1);
@@ -73,10 +30,7 @@ class PredictionService {
     final lastMonthTotal = await _getLastMonthTotal();
 
     if (lastMonthTotal <= 0) {
-      return {
-        'prediction_available': false,
-        'message': 'Pas assez de données pour prédire',
-      };
+      return {'prediction_available': false};
     }
 
     try {
@@ -90,20 +44,12 @@ class PredictionService {
         final data = jsonDecode(response.body);
         return {
           'prediction_available': true,
-          'predicted_amount': data['predicted_next_month'],
-          'last_month_total': lastMonthTotal,
-        };
-      } else {
-        return {
-          'prediction_available': false,
-          'message': 'Erreur lors de la prédiction',
+          'predicted_amount': (data['predicted_next_month'] as num).toDouble(),
         };
       }
+      return {'prediction_available': false};
     } catch (e) {
-      return {
-        'prediction_available': false,
-        'message': 'Erreur de connexion: $e',
-      };
+      return {'prediction_available': false};
     }
   }
 }

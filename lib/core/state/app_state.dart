@@ -6,12 +6,23 @@ import '../services/profile_service.dart';
 import '../services/budget_service.dart';
 import '../services/home_service.dart';
 import '../services/notification_service.dart';
+import '../services/prediction_service.dart';
 
 /// Noms des mois en français, utilisés pour afficher "Juin 2026" et les
 /// dates courtes des dépenses ("27 juin"), sans dépendre du package intl.
 const List<String> kFrenchMonthNames = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
 ];
 
 /// Une catégorie de dépense avec son montant (utilisée pour le donut chart de la Home).
@@ -69,7 +80,8 @@ class Expense {
 
 /// Le budget alloué à une catégorie de dépense (page Budgets).
 class BudgetCategory {
-  final int? categoryId; // id réel de la catégorie dans Supabase (null = ancien mock)
+  final int?
+  categoryId; // id réel de la catégorie dans Supabase (null = ancien mock)
   final String label;
   final IconData icon;
   final Color iconBackground;
@@ -92,7 +104,8 @@ class BudgetCategory {
 
 /// Une notification affichée sur la page Notifications.
 class AppNotification {
-  final int? id; // id Supabase, null pour les notifications pas encore synchronisées
+  final int?
+  id; // id Supabase, null pour les notifications pas encore synchronisées
   final String title;
   final String message;
   final String time;
@@ -137,6 +150,7 @@ class AppNotification {
 /// automatiquement dès qu'une valeur change, où que ce soit dans l'app.
 class AppState extends ChangeNotifier {
   final ProfileService _profileService = ProfileService();
+  final PredictionService _predictionService = PredictionService();
 
   // ---- Profil utilisateur ----
   // Valeurs par défaut affichées le temps que loadProfile() récupère les
@@ -159,6 +173,34 @@ class AppState extends ChangeNotifier {
   /// À appeler une fois, juste après la connexion/inscription réussie
   /// (typiquement dans le splash screen ou la page de connexion),
   /// pour remplir toutes les valeurs ci-dessus avec les vraies données.
+  ///
+
+  Future<void> _syncPredictionNotification() async {
+    try {
+      final prediction = await _predictionService.getPrediction();
+
+      if (prediction['prediction_available'] == true) {
+        final amount = prediction['predicted_amount'] as double;
+        final title = 'Prédiction du mois';
+        final message =
+            'Vous allez probablement dépenser environ '
+            '${amount.toStringAsFixed(0)} ${selectedCurrency.symbol} ce mois-ci.';
+
+        await _notificationService.upsertPredictionNotification(
+          month: currentBudgetMonthDate,
+          title: title,
+          message: message,
+        );
+      } else {
+        await _notificationService.deletePredictionNotification(
+          month: currentBudgetMonthDate,
+        );
+      }
+    } catch (e) {
+      debugPrint('Erreur de synchronisation de la prédiction : $e');
+    }
+  }
+
   Future<void> loadProfile() async {
     isProfileLoading = true;
     notifyListeners();
@@ -167,7 +209,8 @@ class AppState extends ChangeNotifier {
 
       userName = (data['name'] as String?) ?? userName;
       userEmail = (data['email'] as String?) ?? userEmail;
-      monthlyIncome = (data['revenu_mensuel'] as num?)?.toDouble() ?? monthlyIncome;
+      monthlyIncome =
+          (data['revenu_mensuel'] as num?)?.toDouble() ?? monthlyIncome;
 
       final currencyCode = data['devise'] as String?;
       if (currencyCode != null) {
@@ -178,10 +221,13 @@ class AppState extends ChangeNotifier {
       }
 
       isDarkMode = (data['mode_sombre'] as bool?) ?? isDarkMode;
-      notificationsOn = (data['notifications_actives'] as bool?) ?? notificationsOn;
+      notificationsOn =
+          (data['notifications_actives'] as bool?) ?? notificationsOn;
       expensesCount = (data['expenses_count'] as int?) ?? 0;
       monthsFollowed = (data['months_followed'] as int?) ?? 0;
-      passwordLastUpdateLabel = _formatPasswordLabel(data['password_updated_at'] as String?);
+      passwordLastUpdateLabel = _formatPasswordLabel(
+        data['password_updated_at'] as String?,
+      );
     } catch (e) {
       debugPrint('Erreur lors du chargement du profil : $e');
     } finally {
@@ -227,7 +273,9 @@ class AppState extends ChangeNotifier {
     isHomeLoading = true;
     notifyListeners();
     try {
-      final breakdownData = await _homeService.getCategoryBreakdown(currentBudgetMonthDate);
+      final breakdownData = await _homeService.getCategoryBreakdown(
+        currentBudgetMonthDate,
+      );
       final recentData = await _homeService.getRecentExpenses(limit: 3);
 
       categoryBreakdown = breakdownData.map((row) {
@@ -236,10 +284,12 @@ class AppState extends ChangeNotifier {
           amount: (row['amount'] as num).toDouble(),
           color: _hexToColor((row['color'] as String?) ?? '#8B5E34'),
         );
-      }).toList()
-        ..sort((a, b) => b.amount.compareTo(a.amount));
+      }).toList()..sort((a, b) => b.amount.compareTo(a.amount));
 
-      totalSpentThisMonth = categoryBreakdown.fold(0, (sum, c) => sum + c.amount);
+      totalSpentThisMonth = categoryBreakdown.fold(
+        0,
+        (sum, c) => sum + c.amount,
+      );
 
       recentExpenses = recentData.map((row) {
         final category = row['categories'] as Map<String, dynamic>?;
@@ -253,6 +303,8 @@ class AppState extends ChangeNotifier {
           iconBackground: color.withValues(alpha: 0.15),
         );
       }).toList();
+      await _syncPredictionNotification(); // ADD THIS LINE
+      await loadNotifications();
     } catch (e) {
       debugPrint('Erreur lors du chargement de la Home : $e');
     } finally {
@@ -271,12 +323,15 @@ class AppState extends ChangeNotifier {
   final NotificationService _notificationService = NotificationService();
   List<AppNotification> notifications = [];
 
-  int get unreadNotificationsCount => notifications.where((n) => !n.isRead).length;
+  int get unreadNotificationsCount =>
+      notifications.where((n) => !n.isRead).length;
 
   IconData _iconForNotificationType(String type) {
     switch (type) {
       case 'budget_overspend':
         return Icons.warning_amber_rounded;
+      case 'prediction':
+        return Icons.trending_up_rounded;
       default:
         return Icons.notifications_none;
     }
@@ -286,6 +341,8 @@ class AppState extends ChangeNotifier {
     switch (type) {
       case 'budget_overspend':
         return AppColors.redLightColor;
+      case 'prediction':
+        return AppColors.blueLightColor;
       default:
         return AppColors.purpleLightColor;
     }
@@ -295,6 +352,8 @@ class AppState extends ChangeNotifier {
     switch (type) {
       case 'budget_overspend':
         return AppColors.redColor;
+      case 'prediction':
+        return AppColors.darkmauveColor;
       default:
         return AppColors.darkmauveColor;
     }
@@ -319,7 +378,9 @@ class AppState extends ChangeNotifier {
           id: row['id'] as int,
           title: row['title'] as String,
           message: row['message'] as String,
-          time: _formatNotificationTime(DateTime.parse(row['created_at'] as String)),
+          time: _formatNotificationTime(
+            DateTime.parse(row['created_at'] as String),
+          ),
           icon: _iconForNotificationType(type),
           iconBackground: _iconBackgroundForNotificationType(type),
           iconColor: _iconColorForNotificationType(type),
@@ -392,7 +453,11 @@ class AppState extends ChangeNotifier {
 
   // Mois actuellement affiché sur la page Budget (toujours le mois en cours
   // pour l'instant, pas de navigation entre les mois).
-  final DateTime currentBudgetMonthDate = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  final DateTime currentBudgetMonthDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
 
   Color _hexToColor(String hex) {
     final cleaned = hex.replaceFirst('#', '');
@@ -408,8 +473,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       final categoriesData = await _budgetService.getUserCategories();
-      final budgetData = await _budgetService.getBudgetForMonth(currentBudgetMonthDate);
-      final spentData = await _budgetService.getSpentForMonth(currentBudgetMonthDate);
+      final budgetData = await _budgetService.getBudgetForMonth(
+        currentBudgetMonthDate,
+      );
+      final spentData = await _budgetService.getSpentForMonth(
+        currentBudgetMonthDate,
+      );
 
       budgetCategories = categoriesData.map((row) {
         final id = row['id'] as int;
@@ -439,7 +508,8 @@ class AppState extends ChangeNotifier {
   Future<void> saveBudgetToSupabase() async {
     final allocations = <int, double>{
       for (final category in budgetCategories)
-        if (category.categoryId != null) category.categoryId!: category.allocated,
+        if (category.categoryId != null)
+          category.categoryId!: category.allocated,
     };
     await _budgetService.saveBudget(currentBudgetMonthDate, allocations);
   }
@@ -475,14 +545,17 @@ class AppState extends ChangeNotifier {
           );
         }
       } catch (e) {
-        debugPrint('Erreur de synchronisation de la notification (${category.label}) : $e');
+        debugPrint(
+          'Erreur de synchronisation de la notification (${category.label}) : $e',
+        );
       }
     }
 
     await loadNotifications();
   }
 
-  double get totalAllocated => budgetCategories.fold(0, (sum, c) => sum + c.allocated);
+  double get totalAllocated =>
+      budgetCategories.fold(0, (sum, c) => sum + c.allocated);
   double get unallocatedBudget => monthlyIncome - totalAllocated;
 
   // ---- Setters "profil" : chacun met à jour Supabase EN PLUS de la
@@ -604,7 +677,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateExpense(String id, {String? description, String? category, DateTime? date}) {
+  void updateExpense(
+    String id, {
+    String? description,
+    String? category,
+    DateTime? date,
+  }) {
     final expense = expenses.firstWhere((e) => e.id == id);
     if (description != null) expense.description = description;
     if (category != null) expense.category = category;

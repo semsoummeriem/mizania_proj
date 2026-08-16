@@ -4,8 +4,45 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class NotificationService {
   final SupabaseClient _client = Supabase.instance.client;
 
+  /// Crée (ou met à jour) la notification de prédiction du mois pour
+  /// l'utilisateur. Une seule notification de ce type par mois (le
+  /// category_id reste null pour ce type).
+  Future<void> upsertPredictionNotification({
+    required DateTime month,
+    required String title,
+    required String message,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('Aucun utilisateur connecté.');
+
+    await _client.from('notifications').upsert({
+      'user_id': user.id,
+      'category_id': null,
+      'month': _formatMonth(month),
+      'type': 'prediction',
+      'title': title,
+      'message': message,
+    }, onConflict: 'user_id,category_id,month,type');
+  }
+
+  Future<void> deletePredictionNotification({required DateTime month}) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('Aucun utilisateur connecté.');
+
+    await _client
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('month', _formatMonth(month))
+        .eq('type', 'prediction');
+  }
+
   String _formatMonth(DateTime month) {
-    return DateTime(month.year, month.month, 1).toIso8601String().split('T').first;
+    return DateTime(
+      month.year,
+      month.month,
+      1,
+    ).toIso8601String().split('T').first;
   }
 
   /// Récupère toutes les notifications de l'utilisateur, les plus récentes en premier.
@@ -35,17 +72,14 @@ class NotificationService {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('Aucun utilisateur connecté.');
 
-    await _client.from('notifications').upsert(
-      {
-        'user_id': user.id,
-        'category_id': categoryId,
-        'month': _formatMonth(month),
-        'type': 'budget_overspend',
-        'title': title,
-        'message': message,
-      },
-      onConflict: 'user_id,category_id,month,type',
-    );
+    await _client.from('notifications').upsert({
+      'user_id': user.id,
+      'category_id': categoryId,
+      'month': _formatMonth(month),
+      'type': 'budget_overspend',
+      'title': title,
+      'message': message,
+    }, onConflict: 'user_id,category_id,month,type');
   }
 
   /// Supprime l'alerte de dépassement d'une catégorie pour un mois donné
@@ -67,13 +101,19 @@ class NotificationService {
   }
 
   Future<void> markAsRead(int notificationId) async {
-    await _client.from('notifications').update({'is_read': true}).eq('id', notificationId);
+    await _client
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('id', notificationId);
   }
 
   Future<void> markAllAsRead() async {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('Aucun utilisateur connecté.');
 
-    await _client.from('notifications').update({'is_read': true}).eq('user_id', user.id);
+    await _client
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('user_id', user.id);
   }
 }
