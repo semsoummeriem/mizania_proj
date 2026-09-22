@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mizania_proj/features/screens/auth/verify_email.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/styles.dart';
@@ -146,8 +145,9 @@ class _SignInState extends State<SignIn> {
                     },
                   ),
                   SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
                         'Vous avez déjà un compte?',
