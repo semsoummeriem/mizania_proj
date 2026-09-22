@@ -8,8 +8,6 @@ import '../services/home_service.dart';
 import '../services/notification_service.dart';
 import '../services/prediction_service.dart';
 
-/// Noms des mois en français, utilisés pour afficher "Juin 2026" et les
-/// dates courtes des dépenses ("27 juin"), sans dépendre du package intl.
 const List<String> kFrenchMonthNames = [
   'janvier',
   'février',
@@ -25,7 +23,6 @@ const List<String> kFrenchMonthNames = [
   'décembre',
 ];
 
-/// Une catégorie de dépense avec son montant (utilisée pour le donut chart de la Home).
 class CategoryAmount {
   final String label;
   final double amount;
@@ -38,8 +35,6 @@ class CategoryAmount {
   });
 }
 
-
-/// Une dépense récente affichée dans la liste "Dernières dépenses".
 class ExpenseItem {
   final String category;
   final String date;
@@ -56,9 +51,6 @@ class ExpenseItem {
   });
 }
 
-/// Une vraie dépense enregistrée par l'utilisateur, utilisée dans la page
-/// Historique et sa page de détail (contrairement à ExpenseItem qui n'est
-/// qu'un affichage simplifié pour la Home).
 class Expense {
   final String id;
   String description;
@@ -79,16 +71,14 @@ class Expense {
   });
 }
 
-/// Le budget alloué à une catégorie de dépense (page Budgets).
 class BudgetCategory {
-  final int?
-  categoryId; // id réel de la catégorie dans Supabase (null = ancien mock)
+  final int? categoryId;
   final String label;
   final IconData icon;
   final Color iconBackground;
   final Color accentColor;
   double allocated;
-  double spent; // total réellement dépensé ce mois-ci dans cette catégorie
+  double spent;
 
   BudgetCategory({
     this.categoryId,
@@ -103,10 +93,8 @@ class BudgetCategory {
   bool get isOverBudget => allocated > 0 && spent > allocated;
 }
 
-/// Une notification affichée sur la page Notifications.
 class AppNotification {
-  final int?
-  id; // id Supabase, null pour les notifications pas encore synchronisées
+  final int? id;
   final String title;
   final String message;
   final String time;
@@ -140,22 +128,39 @@ class AppNotification {
   }
 }
 
-/// État partagé de toute l'application.
-///
-/// PRINCIPE : au lieu que chaque page (Home, Profil...) ait ses PROPRES variables
-/// "nom", "revenu", etc. (ce qui les désynchroniserait), toutes les pages lisent
-/// et modifient les MÊMES variables, stockées ici, une seule fois.
-///
-/// Cette classe "notifie" ses auditeurs (notifyListeners()) à chaque changement.
-/// Toute page qui la lit via `AppStateScope.of(context)` se reconstruit
-/// automatiquement dès qu'une valeur change, où que ce soit dans l'app.
 class AppState extends ChangeNotifier {
   final ProfileService _profileService = ProfileService();
   final PredictionService _predictionService = PredictionService();
 
+  /// Réinitialise tout l'état en mémoire aux valeurs par défaut.
+  /// À appeler OBLIGATOIREMENT lors de la déconnexion, pour éviter
+  /// qu'un nouvel utilisateur voie encore les données de l'ancien.
+  void reset() {
+    userName = '...';
+    userEmail = '...';
+    monthlyIncome = 0;
+    selectedCurrency = availableCurrencies.first;
+    passwordLastUpdateLabel = '...';
+    isDarkMode = false;
+    notificationsOn = false;
+    expensesCount = 0;
+    monthsFollowed = 0;
+    isProfileLoading = false;
+
+    totalSpentThisMonth = 0;
+    categoryBreakdown = [];
+    recentExpenses = [];
+    isHomeLoading = false;
+
+    notifications = [];
+
+    budgetCategories = [];
+    isBudgetLoading = false;
+
+    notifyListeners();
+  }
+
   // ---- Profil utilisateur ----
-  // Valeurs par défaut affichées le temps que loadProfile() récupère les
-  // vraies données depuis Supabase (évite un écran vide au démarrage).
   String userName = '...';
   String userEmail = '...';
   double monthlyIncome = 0;
@@ -164,17 +169,10 @@ class AppState extends ChangeNotifier {
   bool isDarkMode = false;
   bool notificationsOn = false;
 
-  // Statistiques calculées depuis Supabase (nombre de dépenses, mois suivis)
   int expensesCount = 0;
   int monthsFollowed = 0;
 
-  // true pendant le chargement initial du profil depuis Supabase
   bool isProfileLoading = false;
-
-  /// À appeler une fois, juste après la connexion/inscription réussie
-  /// (typiquement dans le splash screen ou la page de connexion),
-  /// pour remplir toutes les valeurs ci-dessus avec les vraies données.
-  ///
 
   Future<void> _syncPredictionNotification() async {
     try {
@@ -259,17 +257,12 @@ class AppState extends ChangeNotifier {
   List<CategoryAmount> categoryBreakdown = [];
   List<ExpenseItem> recentExpenses = [];
 
-  /// "Juin 2026", calculé à partir du même mois que celui utilisé pour le
-  /// budget (currentBudgetMonthDate défini plus bas), pour que Home et
-  /// Budgets restent toujours sur le même mois.
   String get currentMonthLabel {
     final monthName = kFrenchMonthNames[currentBudgetMonthDate.month - 1];
     final capitalized = monthName[0].toUpperCase() + monthName.substring(1);
     return '$capitalized ${currentBudgetMonthDate.year}';
   }
 
-  /// Charge le total dépensé, la répartition par catégorie, et les
-  /// dernières dépenses depuis Supabase. À appeler à l'ouverture de la Home.
   Future<void> loadHomeData() async {
     isHomeLoading = true;
     notifyListeners();
@@ -304,7 +297,7 @@ class AppState extends ChangeNotifier {
           iconBackground: color.withValues(alpha: 0.15),
         );
       }).toList();
-      await _syncPredictionNotification(); // ADD THIS LINE
+      await _syncPredictionNotification();
       await loadNotifications();
     } catch (e) {
       debugPrint('Erreur lors du chargement de la Home : $e');
@@ -319,8 +312,6 @@ class AppState extends ChangeNotifier {
   }
 
   // ---- Notifications ----
-  // Les notifications sont maintenant persistées dans Supabase (table
-  // `notifications`), au lieu de vivre uniquement en mémoire.
   final NotificationService _notificationService = NotificationService();
   List<AppNotification> notifications = [];
 
@@ -369,7 +360,6 @@ class AppState extends ChangeNotifier {
     return _formatShortDate(date);
   }
 
-  /// Recharge la liste des notifications depuis Supabase.
   Future<void> loadNotifications() async {
     try {
       final rows = await _notificationService.getNotifications();
@@ -394,8 +384,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // ---- Dépenses réelles (page Historique + Détail d'une dépense) ----
-  // TODO: remplacer par les vraies dépenses ajoutées via le bouton "+" une fois cette page créée.
+  // ---- Dépenses réelles ----
   List<Expense> expenses = [
     Expense(
       id: '1',
@@ -444,16 +433,11 @@ class AppState extends ChangeNotifier {
     ),
   ];
 
-  // ---- Budget par catégorie (page Budgets) ----
-  // Ancienne liste fixe supprimée : les catégories viennent maintenant de
-  // Supabase (catégories par défaut + catégories perso de l'utilisateur),
-  // via loadBudgetCategories() ci-dessous.
+  // ---- Budget par catégorie ----
   final BudgetService _budgetService = BudgetService();
   List<BudgetCategory> budgetCategories = [];
   bool isBudgetLoading = false;
 
-  // Mois actuellement affiché sur la page Budget (toujours le mois en cours
-  // pour l'instant, pas de navigation entre les mois).
   final DateTime currentBudgetMonthDate = DateTime(
     DateTime.now().year,
     DateTime.now().month,
@@ -466,9 +450,6 @@ class AppState extends ChangeNotifier {
     return Color(int.parse(withAlpha, radix: 16));
   }
 
-  /// Charge les catégories (par défaut + perso), le budget déjà enregistré
-  /// pour le mois en cours, et les vraies dépenses du mois par catégorie.
-  /// À appeler à l'ouverture de la page Budget.
   Future<void> loadBudgetCategories() async {
     isBudgetLoading = true;
     notifyListeners();
@@ -504,8 +485,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Sauvegarde le budget actuel (toutes les catégories) pour le mois en
-  /// cours dans Supabase.
   Future<void> saveBudgetToSupabase() async {
     final allocations = <int, double>{
       for (final category in budgetCategories)
@@ -515,13 +494,6 @@ class AppState extends ChangeNotifier {
     await _budgetService.saveBudget(currentBudgetMonthDate, allocations);
   }
 
-  /// Synchronise les alertes de dépassement de budget avec Supabase :
-  /// - une catégorie en dépassement → on crée/met à jour son alerte en base
-  ///   (le statut lu/non-lu existant n'est jamais écrasé, voir
-  ///   NotificationService.upsertBudgetOverspendNotification)
-  /// - une catégorie qui n'est plus en dépassement → on supprime son alerte
-  /// Puis on recharge la liste complète depuis Supabase pour que l'affichage
-  /// reflète exactement ce qui est en base (ids, statut lu/non-lu...).
   Future<void> _syncOverspendNotifications() async {
     for (final category in budgetCategories) {
       if (category.categoryId == null) continue;
@@ -559,12 +531,6 @@ class AppState extends ChangeNotifier {
       budgetCategories.fold(0, (sum, c) => sum + c.allocated);
   double get unallocatedBudget => monthlyIncome - totalAllocated;
 
-  // ---- Setters "profil" : chacun met à jour Supabase EN PLUS de la
-  // valeur locale. Si la sauvegarde Supabase échoue, on annule le
-  // changement local (rollback) pour ne jamais désynchroniser l'affichage
-  // de la vraie base de données, et on relance l'erreur pour que l'écran
-  // appelant puisse afficher un message.
-
   Future<void> updateUserName(String newName) async {
     final previous = userName;
     userName = newName;
@@ -578,10 +544,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Déclenche une demande de changement d'email. Supabase envoie un lien
-  /// de confirmation : l'email affiché ne change réellement qu'après que
-  /// l'utilisateur ait cliqué sur ce lien, donc on NE modifie PAS
-  /// `userEmail` ici, on relance juste l'erreur en cas de souci.
   Future<void> updateUserEmail(String newEmail) async {
     await _profileService.requestEmailChange(newEmail);
   }
@@ -612,8 +574,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// À appeler juste après un changement de mot de passe réussi
-  /// (déjà validé côté Supabase par ProfileService.changePassword).
   void markPasswordUpdated() {
     passwordLastUpdateLabel = 'Dernière modif. à l\'instant';
     notifyListeners();
@@ -672,7 +632,6 @@ class AppState extends ChangeNotifier {
   }
 
   // ---- Gestion des dépenses ----
-
   void deleteExpense(String id) {
     expenses.removeWhere((e) => e.id == id);
     notifyListeners();
@@ -692,14 +651,12 @@ class AppState extends ChangeNotifier {
   }
 
   // ---- Gestion du budget ----
-
   void updateBudgetAllocation(String label, double newAmount) {
     final category = budgetCategories.firstWhere((c) => c.label == label);
     category.allocated = newAmount;
     notifyListeners();
   }
 
-  // Applique un preset de répartition en une fois (ex: bouton "Économe")
   void applyBudgetPreset(Map<String, double> preset) {
     for (final category in budgetCategories) {
       if (preset.containsKey(category.label)) {

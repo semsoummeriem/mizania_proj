@@ -10,6 +10,7 @@ import 'package:mizania_proj/core/services/supabase_client.dart';
 import 'package:mizania_proj/features/screens/main_navigation_screen.dart';
 import "package:mizania_proj/features/screens/auth/login.dart";
 import 'package:mizania_proj/core/widgets/google_signin_button.dart';
+import 'package:mizania_proj/core/state/app_state_scope.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -47,7 +48,6 @@ class _SignInState extends State<SignIn> {
               padding: EdgeInsets.symmetric(horizontal: 32, vertical: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                //mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Center(
                     child: Text('Inscription', style: AppStyles.bigtextstyle),
@@ -88,8 +88,7 @@ class _SignInState extends State<SignIn> {
                   Button(
                     text: 'S\'inscrire',
                     onPressed: () async {
-                      // routes to home page
-                      final name = nameController.text;
+                      final name = nameController.text.trim();
                       final email = emailController.text.trim();
                       final password = passwordController.text;
                       final confirmedPass = confirmPasswordController.text;
@@ -122,18 +121,17 @@ class _SignInState extends State<SignIn> {
                         );
                         if (response.user != null) {
                           if (context.mounted) {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => VerifyEmail(
-                                  email: email,
-                                  otpType: OtpType.signup,
-                                  title: 'Vérifie ton email',
-                                  subtitle: 'Entrez le code envoyé à',
-                                  nextScreen: const MainNavigationScreen(),
+                            final appState = AppStateScope.of(context);
+                            appState.reset();
+                            await appState.loadProfile();
+                            if (context.mounted) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const MainNavigationScreen(),
                                 ),
-                              ),
-                            );
+                              );
+                            }
                           }
                         }
                       } on AuthException catch (e) {
@@ -157,12 +155,9 @@ class _SignInState extends State<SignIn> {
                       ),
                       TextButton(
                         onPressed: () {
-                          // Hroutes to login page
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => const Login(),
-                            ),
+                            MaterialPageRoute(builder: (_) => const Login()),
                           );
                         },
                         child: Text(
